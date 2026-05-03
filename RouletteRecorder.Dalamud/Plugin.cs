@@ -97,7 +97,7 @@ public sealed class Plugin : IDalamudPlugin
     private static void OnTerritoryChanged(uint territoryId)
     {
         var currentContent = DataManager.GetExcelSheet<TerritoryType>().GetRow(territoryId).ContentFinderCondition.ValueNullable;
-        PluginLog.Debug($"[OnTerritoryChanged] currentContent: {currentContent}");
+        PluginLog.Debug($"[OnTerritoryChanged] currentContent: {currentContent?.Name}");
 
         if (Roulette.Instance == null)
             Roulette.Init();
@@ -127,12 +127,13 @@ public sealed class Plugin : IDalamudPlugin
         {
             var currentRoulette = DataManager.GetExcelSheet<Lumina.Excel.Sheets.ContentRoulette>().GetRow(poppedContentId);
             rouletteType = currentRoulette.Name.ToString();
+            PluginLog.Debug($"[OnCfPop] Detected roulette pop: {rouletteType}");
         }
 
         Roulette.Init(null, rouletteType);
 
         PluginLog.Debug(
-            $"[OnCfPop] PoppedContentType: {poppedContentType}, PoppedContentId: {poppedContentId}, rouletteName: {rouletteType}"
+            $"[OnCfPop] PoppedContentType: {poppedContentType}, PoppedContentId: {poppedContentId}, rouletteType: {rouletteType}"
         );
     }
 
