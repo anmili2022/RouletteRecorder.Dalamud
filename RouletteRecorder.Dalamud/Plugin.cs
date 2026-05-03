@@ -1,4 +1,5 @@
 using Dalamud.Game.Command;
+using Dalamud.Game.DutyState;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
@@ -93,7 +94,7 @@ public sealed class Plugin : IDalamudPlugin
         }
     }
 
-    private static void OnTerritoryChanged(ushort territoryId)
+    private static void OnTerritoryChanged(uint territoryId)
     {
         var currentContent = DataManager.GetExcelSheet<TerritoryType>().GetRow(territoryId).ContentFinderCondition.ValueNullable;
         PluginLog.Debug($"[OnTerritoryChanged] currentContent: {currentContent}");
@@ -120,9 +121,9 @@ public sealed class Plugin : IDalamudPlugin
 
         var queueInfo = ContentsFinder.Instance()->QueueInfo;
         var poppedContentType = queueInfo.PoppedQueueEntry.ContentType;
-        var poppedContentId = queueInfo.PoppedQueueEntry.ConditionId;
+        var poppedContentId = queueInfo.PoppedQueueEntry.Id;
 
-        if (poppedContentType == ContentsId.ContentsType.Roulette)
+        if (poppedContentType == ContentsType.Roulette)
         {
             var currentRoulette = DataManager.GetExcelSheet<Lumina.Excel.Sheets.ContentRoulette>().GetRow(poppedContentId);
             rouletteType = currentRoulette.Name.ToString();
@@ -135,9 +136,9 @@ public sealed class Plugin : IDalamudPlugin
         );
     }
 
-    private static void OnDutyCompleted(object? sender, ushort territoryId)
+    private static void OnDutyCompleted(IDutyStateEventArgs args)
     {
-        PluginLog.Debug($"[OnDutyCompleted] {territoryId}");
+        PluginLog.Debug($"[OnDutyCompleted] {args.TerritoryType.ValueNullable?.RowId}");
         if (Roulette.Instance == null) return;
 
         Roulette.Instance.IsCompleted = true;
