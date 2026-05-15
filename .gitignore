@@ -583,4 +583,7 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+# Local build output
+output/
+
 # End of https://www.toptal.com/developers/gitignore/api/csharp,visualstudio,jetbrains,macos,linux,windows

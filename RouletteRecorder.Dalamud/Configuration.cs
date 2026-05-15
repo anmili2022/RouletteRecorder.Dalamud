@@ -1,5 +1,4 @@
 using Dalamud.Configuration;
-using Dalamud.Game;
 using Lumina.Excel.Sheets;
 using Newtonsoft.Json;
 using System;
@@ -7,6 +6,12 @@ using System.Collections.Generic;
 using System.IO;
 
 namespace RouletteRecorder.Dalamud;
+
+public enum FloatingWindowStyle
+{
+    Classic = 0,
+    Minimal = 1,
+}
 
 [Serializable]
 public class DungeonLoggerConfig
@@ -25,19 +30,18 @@ public class DungeonLoggerConfig
 public class Configuration : IPluginConfiguration
 {
     public int Version { get; set; } = 0;
-    public string Language = Plugin.ClientState.ClientLanguage switch
-    {
-        ClientLanguage.English => "en",
-        ClientLanguage.Japanese => "en",
-        ClientLanguage.French => "en",
-        ClientLanguage.German => "en",
-        // ClientLanguage.ChineseSimplified only exist in CN ver of dalamud
-        // ClientLanguage.ChineseSimplified => "zh_CN",
-        _ => "zh_CN",
-    };
-    public HashSet<uint> SubscribedRouletteIds { get; set; } = [];
+    public string Language = "zh_CN";
+    public HashSet<uint> SubscribedRouletteIds { get; set; } = [9];
     public string CsvExportPath { get; set; } = Path.Combine(Plugin.PluginInterface.ConfigDirectory.FullName, "data.csv");
     public DungeonLoggerConfig DungeonLoggerConfig { get; set; } = new();
+    public FloatingWindowStyle FloatingWindowStyleMode { get; set; } = FloatingWindowStyle.Minimal;
+    public float FloatingWindowOpacity { get; set; } = 0.54f;
+    public bool LockFloatingWindow { get; set; } = false;
+    public bool DefaultSubscriptionsInitialized { get; set; } = true;
+    public bool MinimalShowCurrentTask { get; set; } = true;
+    public bool MinimalShowTaskTime { get; set; } = false;
+    public bool MinimalShowTodayMentorRouletteCount { get; set; } = true;
+    public bool MinimalShowMentorRouletteTotalCount { get; set; } = false;
 
     public bool SetSubscribedRouletteId(ContentRoulette roulette, bool selected)
     {

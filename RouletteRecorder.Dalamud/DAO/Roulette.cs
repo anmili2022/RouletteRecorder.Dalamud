@@ -2,6 +2,7 @@ using Dalamud.Utility;
 using RouletteRecorder.Dalamud.Network.DungeonLogger;
 using RouletteRecorder.Dalamud.Utils;
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -28,6 +29,73 @@ public class Roulette(string? contentName, string? rouletteType, bool isComplete
         Instance = instance;
     }
 
+    public DateTime? GetStartedDateTime()
+    {
+        return TryParseDateTime(Date, StartedAt);
+    }
+
+    public DateTime? GetEndedDateTime()
+    {
+        if (EndedAt.IsNullOrEmpty()) return null;
+
+        var startedAt = GetStartedDateTime();
+        var endedAt = TryParseDateTime(Date, EndedAt);
+
+        if (startedAt != null && endedAt != null && endedAt < startedAt)
+        {
+            endedAt = endedAt.Value.AddDays(1);
+        }
+
+        return endedAt;
+    }
+
+    public TimeSpan? GetDuration(DateTime? referenceTime = null)
+    {
+        var startedAt = GetStartedDateTime();
+        if (startedAt == null) return null;
+
+        var endedAt = GetEndedDateTime() ?? referenceTime ?? DateTime.Now;
+        return endedAt >= startedAt ? endedAt - startedAt : null;
+    }
+
+    public string GetDurationText(DateTime? referenceTime = null)
+    {
+        var duration = GetDuration(referenceTime);
+        if (duration == null) return "未知";
+
+        return $"{(int)duration.Value.TotalHours:00}:{duration.Value.Minutes:00}:{duration.Value.Seconds:00}";
+    }
+
+    public string GetStartTimeText()
+    {
+        return GetStartedDateTime()?.ToString("yyyy-MM-dd HH:mm:ss") ?? $"{Date} {StartedAt}";
+    }
+
+    public string GetEndTimeText()
+    {
+        if (EndedAt.IsNullOrEmpty()) return "-";
+
+        return GetEndedDateTime()?.ToString("yyyy-MM-dd HH:mm:ss") ?? $"{Date} {EndedAt}";
+    }
+
+    private static DateTime? TryParseDateTime(string? date, string? time)
+    {
+        if (date.IsNullOrEmpty() || time.IsNullOrEmpty()) return null;
+
+        var text = $"{date} {time}";
+        if (DateTime.TryParse(text, CultureInfo.CurrentCulture, DateTimeStyles.AssumeLocal, out var currentCultureValue))
+        {
+            return currentCultureValue;
+        }
+
+        if (DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var invariantCultureValue))
+        {
+            return invariantCultureValue;
+        }
+
+        return null;
+    }
+
     public async void Finish()
     {
         try
@@ -39,7 +107,7 @@ public class Roulette(string? contentName, string? rouletteType, bool isComplete
             if (Instance.RouletteType == null || Instance.ContentName == null || !isSubscribedRouletteType) return;
 
             Instance.JobName = Plugin.GetJobName() ?? "未知职业";
-            Instance.EndedAt = DateTime.Now.ToString("T");
+            Instance.EndedAt ??= DateTime.Now.ToString("T");
 
             Database.InsertRoulette(Instance);
             if (Instance.IsCompleted && Plugin.Configuration.DungeonLoggerConfig.Enabled) await UploadDungeonLogger();

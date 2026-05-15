@@ -4,6 +4,7 @@ using Lumina.Excel.Sheets;
 using Newtonsoft.Json;
 using RouletteRecorder.Dalamud.DAO;
 using RouletteRecorder.Dalamud.Models;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -39,6 +40,61 @@ public class Database
     {
         Roulettes.Add(roulette);
         Save();
+    }
+
+    public static int GetTodayMentorRouletteCount()
+    {
+        var mentorRouletteNames = CfRoulettes
+            .Where(IsMentorRoulette)
+            .Select(roulette => roulette.Name.ToString())
+            .Where(name => !name.IsNullOrWhitespace())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return Roulettes.Count(roulette =>
+            roulette.IsCompleted &&
+            IsToday(roulette) &&
+            IsMentorRouletteName(roulette.RouletteType, mentorRouletteNames));
+    }
+
+    private static bool IsToday(Roulette roulette)
+    {
+        var startedAt = roulette.GetStartedDateTime();
+        if (startedAt != null)
+        {
+            return startedAt.Value.Date == DateTime.Today;
+        }
+
+        return DateTime.TryParseExact(
+            roulette.Date,
+            "yyyy-MM-dd",
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeLocal,
+            out var date) && date.Date == DateTime.Today;
+    }
+
+    public static bool IsMentorRoulette(ContentRoulette roulette)
+    {
+        return IsMentorRouletteName(roulette.Name.ToString(), null);
+    }
+
+    public static bool IsMentorRouletteName(string? rouletteType, HashSet<string>? mentorRouletteNames = null)
+    {
+        if (rouletteType.IsNullOrWhitespace())
+        {
+            return false;
+        }
+
+        if (mentorRouletteNames?.Contains(rouletteType) == true)
+        {
+            return true;
+        }
+
+        return rouletteType.Contains("Mentor", StringComparison.OrdinalIgnoreCase) ||
+               rouletteType.Contains("指导", StringComparison.Ordinal) ||
+               rouletteType.Contains("指导者", StringComparison.Ordinal) ||
+               rouletteType.Contains("导随", StringComparison.Ordinal) ||
+               rouletteType.Contains("導師", StringComparison.Ordinal) ||
+               rouletteType.Contains("導隨", StringComparison.Ordinal);
     }
 
     public static void Save()

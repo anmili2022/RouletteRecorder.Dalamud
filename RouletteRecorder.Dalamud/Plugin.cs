@@ -10,6 +10,9 @@ using Lumina.Excel.Sheets;
 using RouletteRecorder.Dalamud.DAO;
 using RouletteRecorder.Dalamud.Utils;
 using RouletteRecorder.Dalamud.Windows;
+using System;
+using System.Linq;
+using ClientAchievement = FFXIVClientStructs.FFXIV.Client.Game.UI.Achievement;
 
 namespace RouletteRecorder.Dalamud;
 
@@ -17,27 +20,36 @@ public sealed class Plugin : IDalamudPlugin
 {
     [PluginService] internal static IChatGui ChatGui { get; private set; } = null!;
     [PluginService] internal static IClientState ClientState { get; private set; } = null!;
-    [PluginService] internal static IPlayerState PlayerState { get; private set; } = null!;
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
     [PluginService] internal static IDutyState DutyState { get; private set; } = null!;
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
+    [PluginService] internal static IPlayerState PlayerState { get; private set; } = null!;
     [PluginService] internal static IPluginLog PluginLog { get; private set; } = null!;
 
     private const string CommandName = "/prr";
+    // Achievement 1604 is the 2,000-clear mentor roulette achievement ("I Hope Mentor Will Notice Me VI").
+    private const uint MentorRouletteAchievementId = 1604;
+    private const uint MentorRouletteAchievementMaxCount = 2000;
 
     public static Configuration Configuration { get; private set; } = null!;
     public static Localization Localization { get; private set; } = null!;
 
-    public readonly WindowSystem WindowSystem = new("RouletteRecorder");
+    public readonly WindowSystem WindowSystem = new("日随伴侣");
     private ConfigWindow ConfigWindow { get; init; }
     private MainWindow MainWindow { get; init; }
+    private static DateTime lastMentorRouletteAchievementRequest = DateTime.MinValue;
+    private static uint? mentorRouletteAchievementCurrent;
+    private static uint? mentorRouletteAchievementMax;
+    private static string mentorRouletteAchievementStatus = "Achievement progress not requested";
 
     public Plugin()
     {
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+        Configuration.Language = "zh_CN";
         Localization = new Localization(Configuration.Language);
         Database.Load();
+        EnsureDefaultSubscriptions();
 
         ConfigWindow = new ConfigWindow(this);
         MainWindow = new MainWindow(this);
@@ -47,7 +59,7 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Open plugin GUI"
+            HelpMessage = "打开日随伴侣界面"
         });
 
         ClientState.CfPop += OnCfPop;
@@ -143,6 +155,7 @@ public sealed class Plugin : IDalamudPlugin
         if (Roulette.Instance == null) return;
 
         Roulette.Instance.IsCompleted = true;
+        Roulette.Instance.EndedAt ??= DateTime.Now.ToString("T");
         if (Roulette.Instance.RouletteType != null)
         {
             Roulette.Instance.Finish();
@@ -156,9 +169,96 @@ public sealed class Plugin : IDalamudPlugin
     }
 
     private void DrawUi() => WindowSystem.Draw();
+
     public void ToggleConfigUi() => ConfigWindow.Toggle();
     public void ToggleMainUi() => MainWindow.Toggle();
+    public void OpenConfigUi()
+    {
+        ConfigWindow.IsOpen = true;
+        ConfigWindow.RequestFocus = true;
+    }
+
+    private static void EnsureDefaultSubscriptions()
+    {
+        if (Configuration.DefaultSubscriptionsInitialized)
+        {
+            return;
+        }
+
+        if (Configuration.SubscribedRouletteIds.Count == 0)
+        {
+            foreach (var roulette in Database.CfRoulettes.Where(Database.IsMentorRoulette))
+            {
+                Configuration.SubscribedRouletteIds.Add(roulette.RowId);
+            }
+        }
+
+        Configuration.DefaultSubscriptionsInitialized = true;
+        Configuration.Save();
+    }
 
     public static string? GetJobName() => PlayerState.ClassJob.ValueNullable?.Name.ToString();
-    public static uint? GetJobId() => PlayerState.ClassJob.ValueNullable?.RowId;
+    public static uint? GetJobId() => PlayerState.ClassJob.RowId;
+
+    public static unsafe string GetMentorRouletteAchievementProgressText()
+    {
+        UpdateMentorRouletteAchievementProgress();
+
+        if (mentorRouletteAchievementCurrent != null)
+        {
+            return $"{mentorRouletteAchievementCurrent} / {mentorRouletteAchievementMax ?? MentorRouletteAchievementMaxCount}";
+        }
+
+        return Localization.Localize(mentorRouletteAchievementStatus);
+    }
+
+    public static unsafe void RefreshMentorRouletteAchievementProgress()
+    {
+        UpdateMentorRouletteAchievementProgress(true);
+    }
+
+    private static unsafe void UpdateMentorRouletteAchievementProgress(bool force = false)
+    {
+        if (!ClientState.IsLoggedIn)
+        {
+            mentorRouletteAchievementStatus = "Not logged in";
+            return;
+        }
+
+        var achievement = ClientAchievement.Instance();
+        if (achievement == null)
+        {
+            mentorRouletteAchievementStatus = "Achievement API unavailable";
+            return;
+        }
+
+        if (!force && achievement->IsLoaded() && achievement->IsComplete((int)MentorRouletteAchievementId))
+        {
+            mentorRouletteAchievementCurrent = MentorRouletteAchievementMaxCount;
+            mentorRouletteAchievementMax = MentorRouletteAchievementMaxCount;
+            mentorRouletteAchievementStatus = "Achievement progress loaded";
+            return;
+        }
+
+        if (!force &&
+            achievement->ProgressAchievementId == MentorRouletteAchievementId &&
+            achievement->ProgressRequestState == ClientAchievement.AchievementState.Loaded)
+        {
+            mentorRouletteAchievementCurrent = achievement->ProgressCurrent;
+            mentorRouletteAchievementMax = achievement->ProgressMax == 0 ? MentorRouletteAchievementMaxCount : achievement->ProgressMax;
+            mentorRouletteAchievementStatus = "Achievement progress loaded";
+            return;
+        }
+
+        if (!force && DateTime.Now - lastMentorRouletteAchievementRequest < TimeSpan.FromSeconds(30))
+        {
+            mentorRouletteAchievementStatus = "Reading achievement progress...";
+            return;
+        }
+
+        achievement->RequestAchievementProgress(MentorRouletteAchievementId);
+        lastMentorRouletteAchievementRequest = DateTime.Now;
+        mentorRouletteAchievementStatus = "Reading achievement progress...";
+    }
+
 }
