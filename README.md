@@ -6,9 +6,10 @@
 
 日随伴侣是 [RouletteRecorder](https://github.com/StarHeartHunt/RouletteRecorder) 的 Dalamud 插件版本，用于自动记录《FINAL FANTASY XIV》的每日随机任务，包括指导者随机任务。
 
-### 交接文档
+### 交接与维护文档
 
 - [日随伴侣交接文档](docs/HANDOFF.md)
+- [日随伴侣发布流程](docs/RELEASE.md)
 
 ### 安装
 
@@ -134,9 +135,10 @@ output/RouletteRecorder.Dalamud.dll
 
 Daily Roulette Companion is the Dalamud plugin version of [RouletteRecorder](https://github.com/StarHeartHunt/RouletteRecorder). It automatically records your daily roulettes in FINAL FANTASY XIV, including mentor roulettes.
 
-### Handoff
+### Handoff and maintenance
 
 - [日随伴侣 Handoff Document](docs/HANDOFF.md)
+- [日随伴侣 Release Guide](docs/RELEASE.md)
 
 ### Installation
 
