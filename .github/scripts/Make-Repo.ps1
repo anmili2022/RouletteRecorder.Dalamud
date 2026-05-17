@@ -4,7 +4,7 @@ $output = New-Object Collections.Generic.List[object]
 
 $content = Get-Content "Release/RouletteRecorder.Dalamud.json" | ConvertFrom-Json
 
-$dlTemplate = "https://github.com/StarHeartHunt/RouletteRecorder.Dalamud/releases/download/v{0}/latest.zip"
+$dlTemplate = "https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/download/v{0}/latest.zip"
 
 $content | add-member -Name "IsHide" -value "False" -MemberType NoteProperty
 
@@ -26,7 +26,7 @@ $content | add-member -Name "DownloadLinkUpdate" $dlLink -MemberType NotePropert
 $output.Add($content)
 
 # https://stackoverflow.com/questions/18662967/convertto-json-an-array-with-a-single-item
-$outputStr = ConvertTo-Json $output
+$outputStr = ConvertTo-Json $output -Depth 10
 Write-Output $outputStr
 
 Out-File -FilePath .\repo.json -InputObject $outputStr

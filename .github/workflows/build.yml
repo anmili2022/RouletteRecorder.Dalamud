@@ -46,7 +46,7 @@ jobs:
         with:
           name: build
           path: |
-            ./RouletteRecorder.Dalamud/bin/x64/*
+            ./output/**
 
   deploy:
     permissions: write-all
@@ -62,6 +62,9 @@ jobs:
 
       - name: Download artifacts
         uses: actions/download-artifact@v8
+        with:
+          name: build
+          path: Release
 
       - name: Get Tag Name
         shell: bash

@@ -38,6 +38,7 @@
    - `经典样式`：当前完整样式，保留两个页签和历史任务表格。
    - `极简样式`：更紧凑的样式，不显示窗口标题、页签、设置按钮和导出按钮，仅保留当前任务核心信息；右键点击悬浮窗可打开设置窗口。
    - 可通过 `悬浮窗透明度` 调整悬浮窗背景透明度。
+   - 可通过 `锁定悬浮窗` 旁边的 `开启悬浮窗` 选项显示或隐藏主悬浮窗。
    - `悬浮窗显示项` 同时影响经典样式和极简样式：`当前任务` 控制任务类型和任务名称；`任务时间` 控制任务时长、开始时间和是否完成；`今日导随任务次数` 与 `导随任务总次数` 分别控制对应计数显示。极简样式中的今日导随任务次数会以黄色强调显示。
 6. 展开 `Subscribed Roulette Types`。
 7. 选择需要订阅并记录的随机任务类型。
@@ -119,6 +120,12 @@ output/RouletteRecorder.Dalamud.dll
 
 打开或关闭日随伴侣悬浮窗。
 
+```text
+/prr cfg
+```
+
+打开日随伴侣设置面板。
+
 ---
 
 ## English
@@ -159,6 +166,7 @@ Daily Roulette Companion is the Dalamud plugin version of [RouletteRecorder](htt
    - `Classic Style`: the current full layout with both tabs and the history task table.
    - `Minimal Style`: a more compact layout without the window title, tabs, settings button, or CSV export button; it keeps only the core current-task information. Right-click the floating window to open settings.
    - Use `悬浮窗透明度` (`Floating Window Opacity`) to adjust the floating window background opacity.
+   - Use `开启悬浮窗` (`Enable Floating Window`) next to `锁定悬浮窗` (`Lock Floating Window`) to show or hide the main floating window.
    - `悬浮窗显示项` (`Floating Window Display Items`) affects both Classic Style and Minimal Style: `当前任务` (`Current Task`) controls the task type and duty name; `任务时间` (`Task Time`) controls task duration, start time, and completed status; `今日导随任务次数` (`Today Mentor Roulette Count`) and `导随任务总次数` (`Mentor Roulette Total Count`) control their corresponding counters. In Minimal Style, today's mentor roulette count is highlighted in yellow.
 6. Expand `Subscribed Roulette Types`.
 7. Select the roulette types you want to subscribe to and record.
@@ -239,3 +247,9 @@ output/RouletteRecorder.Dalamud.dll
 ```
 
 Open or close the 日随伴侣 floating window.
+
+```text
+/prr cfg
+```
+
+Open the 日随伴侣 settings panel.

@@ -14,6 +14,8 @@ namespace RouletteRecorder.Dalamud.Windows;
 
 public sealed class ConfigWindow : Window, IDisposable
 {
+    private readonly Plugin plugin;
+
     private enum LoginStatus
     {
         Initial,
@@ -26,11 +28,12 @@ public sealed class ConfigWindow : Window, IDisposable
     private LoginStatus loginStatus = LoginStatus.Initial;
 
     public ConfigWindow(Plugin plugin)
-        : base($"设置窗口 v{typeof(Plugin).Assembly.GetName().Version}###rouletteRecorderConfigWindow", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
+        : base($"设置窗口 v{typeof(Plugin).Assembly.GetName().Version}###rouletteRecorderConfigWindow", ImGuiWindowFlags.None)
     {
+        this.plugin = plugin;
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(375, 425),
+            MinimumSize = new Vector2(520, 560),
             MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
         };
     }
@@ -39,80 +42,35 @@ public sealed class ConfigWindow : Window, IDisposable
 
     public override void Draw()
     {
+        DrawHeader();
         DrawSaveFolderSection();
         DrawFloatingWindowStyleSection();
+        DrawDailyTaskMonitorSection();
+        DrawSubscribedRouletteTypesSection();
+        DrawDungeonLoggerSection();
+    }
 
-        if (ImGui.CollapsingHeader(Plugin.Localization.Localize("Subscribed Roulette Types")))
-        {
-            ImGui.Indent();
-            foreach (var roulette in Database.CfRoulettes)
-            {
-                var selected = Plugin.Configuration.SubscribedRouletteIds.Contains(roulette.RowId);
-                if (ImGui.Checkbox(roulette.Name.ToString(), ref selected))
-                {
-                    Plugin.Configuration.SetSubscribedRouletteId(roulette, selected);
-                }
-            }
-            ImGui.Unindent();
-        }
-
-        if (ImGui.CollapsingHeader(Plugin.Localization.Localize("DungeonLogger Account Config")))
-        {
-            ImGui.Indent();
-            if (ImGui.Checkbox(Plugin.Localization.Localize("Enable DungeonLogger Report"), ref Plugin.Configuration.DungeonLoggerConfig.Enabled))
-            {
-                Plugin.Configuration.Save();
-            }
-            ;
-
-            if (Plugin.Configuration.DungeonLoggerConfig.Enabled)
-            {
-                ImGui.Text(Plugin.Localization.Localize("User Name"));
-                ImGui.SameLine();
-                if (ImGui.InputText("##username", ref Plugin.Configuration.DungeonLoggerConfig.Username, 100))
-                {
-                    Plugin.Configuration.Save();
-                }
-
-                ImGui.Text(Plugin.Localization.Localize("Password"));
-                ImGui.SameLine();
-                if (ImGui.InputText("##password", ref Plugin.Configuration.DungeonLoggerConfig.Password, 100, ImGuiInputTextFlags.Password))
-                {
-                    Plugin.Configuration.Save();
-                }
-                ;
-            }
-
-            if (ImGui.Button(Plugin.Localization.Localize("Test Login")))
-            {
-                Task.Run(TestDungeonLoggerLogin);
-            }
-
-            var loginStatusColor = loginStatus switch
-            {
-                LoginStatus.Pending => ImGuiColors.DalamudYellow,
-                LoginStatus.Success => ImGuiColors.ParsedGreen,
-                LoginStatus.Failed => ImGuiColors.DalamudRed,
-                _ => ImGuiColors.DalamudWhite
-            };
-
-            const string pendingMessage = "Sending request to Dungeon Logger Server";
-            ImGui.TextColored(loginStatusColor, Plugin.Localization.Localize(loginStatus == LoginStatus.Pending ? pendingMessage : loginResponseMessage));
-
-            ImGui.Unindent();
-        }
+    private static void DrawHeader()
+    {
+        ImGui.TextColored(ImGuiColors.DalamudYellow, Plugin.Localization.Localize("Settings Overview"));
+        ImGui.TextWrapped(Plugin.Localization.Localize("Settings Overview Description"));
+        ImGui.Separator();
+        ImGui.Spacing();
     }
 
     private static void DrawSaveFolderSection()
     {
+        DrawSectionTitle("Save Data");
+        ImGui.TextDisabled(Plugin.Localization.Localize("Save Folder Hint"));
+        ImGui.TextWrapped(Plugin.PluginInterface.ConfigDirectory.FullName);
+
         if (ImGui.Button(Plugin.Localization.Localize("Open Save Folder")))
         {
             OpenSaveFolder();
         }
 
-        ImGui.SameLine();
-        ImGui.TextDisabled(Plugin.PluginInterface.ConfigDirectory.FullName);
         ImGui.Separator();
+        ImGui.Spacing();
     }
 
     private static void OpenSaveFolder()
@@ -133,7 +91,7 @@ public sealed class ConfigWindow : Window, IDisposable
         }
     }
 
-    private static void DrawFloatingWindowStyleSection()
+    private void DrawFloatingWindowStyleSection()
     {
         if (!ImGui.CollapsingHeader(Plugin.Localization.Localize("Floating Window Style"), ImGuiTreeNodeFlags.DefaultOpen))
         {
@@ -141,6 +99,8 @@ public sealed class ConfigWindow : Window, IDisposable
         }
 
         ImGui.Indent();
+
+        DrawSubTitle("Appearance");
 
         var currentStyle = Plugin.Configuration.FloatingWindowStyleMode;
         var currentLabel = GetFloatingWindowStyleLabel(currentStyle);
@@ -179,6 +139,9 @@ public sealed class ConfigWindow : Window, IDisposable
             Plugin.Configuration.Save();
         }
 
+        ImGui.Spacing();
+        DrawSubTitle("Window Behavior");
+
         var lockFloatingWindow = Plugin.Configuration.LockFloatingWindow;
         if (ImGui.Checkbox(Plugin.Localization.Localize("Lock Floating Window"), ref lockFloatingWindow))
         {
@@ -186,14 +149,206 @@ public sealed class ConfigWindow : Window, IDisposable
             Plugin.Configuration.Save();
         }
 
+        ImGui.SameLine();
+        var clickthroughFloatingWindow = Plugin.Configuration.ClickthroughFloatingWindow;
+        if (ImGui.Checkbox(Plugin.Localization.Localize("Clickthrough Floating Window"), ref clickthroughFloatingWindow))
+        {
+            Plugin.Configuration.ClickthroughFloatingWindow = clickthroughFloatingWindow;
+            Plugin.Configuration.Save();
+        }
+
+        ImGui.SameLine();
+        var enableFloatingWindow = plugin.IsMainUiOpen;
+        if (ImGui.Checkbox(Plugin.Localization.Localize("Enable Floating Window"), ref enableFloatingWindow))
+        {
+            plugin.SetMainUiOpen(enableFloatingWindow);
+        }
+
+        ImGui.TextDisabled(Plugin.Localization.Localize("Clickthrough Floating Window Hint"));
+
+        var showRouletteCompletionTips = Plugin.Configuration.ShowRouletteCompletionTips;
+        if (ImGui.Checkbox(Plugin.Localization.Localize("Show Roulette Completion Tips"), ref showRouletteCompletionTips))
+        {
+            Plugin.Configuration.ShowRouletteCompletionTips = showRouletteCompletionTips;
+            Plugin.Configuration.Save();
+        }
+
         ImGui.Spacing();
+        DrawSubTitle("Display Content");
         ImGui.TextDisabled(Plugin.Localization.Localize("Floating Window Display Items"));
-        DrawDisplayItemCheckbox("Show Current Task", Plugin.Configuration.MinimalShowCurrentTask, value => Plugin.Configuration.MinimalShowCurrentTask = value);
-        DrawDisplayItemCheckbox("Show Task Time", Plugin.Configuration.MinimalShowTaskTime, value => Plugin.Configuration.MinimalShowTaskTime = value);
-        DrawDisplayItemCheckbox("Show Today Mentor Roulette Count", Plugin.Configuration.MinimalShowTodayMentorRouletteCount, value => Plugin.Configuration.MinimalShowTodayMentorRouletteCount = value);
-        DrawDisplayItemCheckbox("Show Mentor Roulette Total Count", Plugin.Configuration.MinimalShowMentorRouletteTotalCount, value => Plugin.Configuration.MinimalShowMentorRouletteTotalCount = value);
+        if (ImGui.BeginTable("FloatingWindowDisplayItemsTable", 2, ImGuiTableFlags.SizingStretchProp))
+        {
+            ImGui.TableNextColumn();
+            DrawDisplayItemCheckbox("Show Current Task", Plugin.Configuration.MinimalShowCurrentTask, value => Plugin.Configuration.MinimalShowCurrentTask = value);
+
+            ImGui.TableNextColumn();
+            DrawDisplayItemCheckbox("Show Task Time", Plugin.Configuration.MinimalShowTaskTime, value => Plugin.Configuration.MinimalShowTaskTime = value);
+
+            ImGui.TableNextColumn();
+            DrawDisplayItemCheckbox("Show Today Mentor Roulette Count", Plugin.Configuration.MinimalShowTodayMentorRouletteCount, value => Plugin.Configuration.MinimalShowTodayMentorRouletteCount = value);
+
+            ImGui.TableNextColumn();
+            DrawDisplayItemCheckbox("Show Mentor Roulette Total Count", Plugin.Configuration.MinimalShowMentorRouletteTotalCount, value => Plugin.Configuration.MinimalShowMentorRouletteTotalCount = value);
+
+            ImGui.TableNextColumn();
+            DrawDisplayItemCheckbox("Show Current Time", Plugin.Configuration.ShowCurrentTime, value => Plugin.Configuration.ShowCurrentTime = value);
+
+            ImGui.EndTable();
+        }
 
         ImGui.Unindent();
+        ImGui.Spacing();
+    }
+
+    private static void DrawDailyTaskMonitorSection()
+    {
+        if (!ImGui.CollapsingHeader(Plugin.Localization.Localize("Daily Task Monitor"), ImGuiTreeNodeFlags.DefaultOpen))
+        {
+            return;
+        }
+
+        ImGui.Indent();
+        ImGui.TextDisabled(Plugin.Localization.Localize("Daily Task Monitor Hint"));
+        ImGui.Spacing();
+
+        if (ImGui.BeginTable("DailyTaskMonitorTable", 2, ImGuiTableFlags.SizingStretchProp))
+        {
+            var index = 0;
+            foreach (var option in Database.GetDailyTaskMonitorOptions())
+            {
+                ImGui.TableNextColumn();
+
+                var selected = Plugin.Configuration.MonitoredDailyTaskKeys.Contains(option.Key);
+                if (ImGui.Checkbox($"{option.Name}##dailyTaskMonitor{option.Key}", ref selected))
+                {
+                    Plugin.Configuration.SetMonitoredDailyTaskKey(option.Key, selected);
+                }
+
+                index++;
+                if (index % 2 == 0)
+                {
+                    ImGui.TableNextRow();
+                }
+            }
+
+            ImGui.EndTable();
+        }
+
+        ImGui.Unindent();
+        ImGui.Spacing();
+    }
+
+    private static void DrawSubscribedRouletteTypesSection()
+    {
+        if (!ImGui.CollapsingHeader(Plugin.Localization.Localize("Subscribed Roulette Types")))
+        {
+            return;
+        }
+
+        ImGui.Indent();
+        ImGui.TextDisabled(string.Format(
+            Plugin.Localization.Localize("Subscribed Roulette Summary"),
+            Plugin.Configuration.SubscribedRouletteIds.Count,
+            Database.CfRoulettes.Length));
+        ImGui.Spacing();
+
+        if (ImGui.BeginTable("SubscribedRouletteTypesTable", 2, ImGuiTableFlags.SizingStretchProp))
+        {
+            var index = 0;
+            foreach (var roulette in Database.CfRoulettes)
+            {
+                ImGui.TableNextColumn();
+
+                var selected = Plugin.Configuration.SubscribedRouletteIds.Contains(roulette.RowId);
+                if (ImGui.Checkbox($"{roulette.Name}##subscribedRoulette{roulette.RowId}", ref selected))
+                {
+                    Plugin.Configuration.SetSubscribedRouletteId(roulette, selected);
+                }
+
+                index++;
+                if (index % 2 == 0)
+                {
+                    ImGui.TableNextRow();
+                }
+            }
+
+            ImGui.EndTable();
+        }
+
+        ImGui.Unindent();
+        ImGui.Spacing();
+    }
+
+    private void DrawDungeonLoggerSection()
+    {
+        if (!ImGui.CollapsingHeader(Plugin.Localization.Localize("DungeonLogger Account Config")))
+        {
+            return;
+        }
+
+        ImGui.Indent();
+        ImGui.TextDisabled(Plugin.Localization.Localize("DungeonLogger Hint"));
+
+        if (ImGui.Checkbox(Plugin.Localization.Localize("Enable DungeonLogger Report"), ref Plugin.Configuration.DungeonLoggerConfig.Enabled))
+        {
+            Plugin.Configuration.Save();
+        }
+
+        if (Plugin.Configuration.DungeonLoggerConfig.Enabled)
+        {
+            ImGui.Spacing();
+            DrawLoginInput("User Name", "##username", ref Plugin.Configuration.DungeonLoggerConfig.Username, ImGuiInputTextFlags.None);
+            DrawLoginInput("Password", "##password", ref Plugin.Configuration.DungeonLoggerConfig.Password, ImGuiInputTextFlags.Password);
+        }
+
+        ImGui.Spacing();
+        if (ImGui.Button(Plugin.Localization.Localize("Test Login")))
+        {
+            Task.Run(TestDungeonLoggerLogin);
+        }
+
+        DrawLoginStatus();
+        ImGui.Unindent();
+        ImGui.Spacing();
+    }
+
+    private static void DrawLoginInput(string labelKey, string id, ref string value, ImGuiInputTextFlags flags)
+    {
+        ImGui.TextUnformatted(Plugin.Localization.Localize(labelKey));
+        ImGui.SetNextItemWidth(-1f);
+        if (ImGui.InputText(id, ref value, 100, flags))
+        {
+            Plugin.Configuration.Save();
+        }
+    }
+
+    private void DrawLoginStatus()
+    {
+        var loginStatusColor = loginStatus switch
+        {
+            LoginStatus.Pending => ImGuiColors.DalamudYellow,
+            LoginStatus.Success => ImGuiColors.ParsedGreen,
+            LoginStatus.Failed => ImGuiColors.DalamudRed,
+            _ => ImGuiColors.DalamudWhite
+        };
+
+        const string pendingMessage = "Sending request to Dungeon Logger Server";
+        var message = loginStatus == LoginStatus.Pending ? pendingMessage : loginResponseMessage;
+        if (!message.IsNullOrWhitespace())
+        {
+            ImGui.TextColored(loginStatusColor, Plugin.Localization.Localize(message));
+        }
+    }
+
+    private static void DrawSectionTitle(string labelKey)
+    {
+        ImGui.TextColored(ImGuiColors.DalamudYellow, Plugin.Localization.Localize(labelKey));
+    }
+
+    private static void DrawSubTitle(string labelKey)
+    {
+        ImGui.TextColored(ImGuiColors.DalamudYellow, Plugin.Localization.Localize(labelKey));
+        ImGui.Separator();
     }
 
     private static void DrawDisplayItemCheckbox(string labelKey, bool currentValue, Action<bool> setValue)

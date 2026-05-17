@@ -24,6 +24,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
     [PluginService] internal static IDutyState DutyState { get; private set; } = null!;
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
+    [PluginService] internal static IObjectTable ObjectTable { get; private set; } = null!;
     [PluginService] internal static IPlayerState PlayerState { get; private set; } = null!;
     [PluginService] internal static IPluginLog PluginLog { get; private set; } = null!;
 
@@ -50,6 +51,7 @@ public sealed class Plugin : IDalamudPlugin
         Localization = new Localization(Configuration.Language);
         Database.Load();
         EnsureDefaultSubscriptions();
+        EnsureDefaultDailyTaskMonitors();
 
         ConfigWindow = new ConfigWindow(this);
         MainWindow = new MainWindow(this);
@@ -59,7 +61,7 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "打开日随伴侣界面"
+            HelpMessage = "打开或关闭日随伴侣悬浮窗；/prr cfg 打开设置面板"
         });
 
         ClientState.CfPop += OnCfPop;
@@ -104,6 +106,12 @@ public sealed class Plugin : IDalamudPlugin
         {
             Database.SavePendingRoulette();
         }
+
+        if (RisuiRoulette.Instance != null && !RisuiRoulette.Instance.IsCompleted)
+        {
+            RisuiRoulette.Instance.ContentName ??= RisuiRoulette.Instance.RouletteType;
+            RisuiRoulette.Instance.Finish();
+        }
     }
 
     private static void OnTerritoryChanged(uint territoryId)
@@ -125,11 +133,15 @@ public sealed class Plugin : IDalamudPlugin
 
             if (Roulette.Instance.RouletteType != null) Roulette.Instance.Finish();
         }
+
+        UpdateRisuiRouletteTerritory(currentContent?.Name.ToString());
     }
 
     private static unsafe void OnCfPop(ContentFinderCondition condition)
     {
         string? rouletteType = null;
+        string? risuiRouletteType = null;
+        var shouldSaveRisui = false;
 
         var queueInfo = ContentsFinder.Instance()->QueueInfo;
         var poppedContentType = queueInfo.PoppedQueueEntry.ContentType;
@@ -139,43 +151,103 @@ public sealed class Plugin : IDalamudPlugin
         {
             var currentRoulette = DataManager.GetExcelSheet<Lumina.Excel.Sheets.ContentRoulette>().GetRow(poppedContentId);
             rouletteType = currentRoulette.Name.ToString();
+            risuiRouletteType = rouletteType;
+            shouldSaveRisui = true;
             PluginLog.Debug($"[OnCfPop] Detected roulette pop: {rouletteType}");
+        }
+        else if (poppedContentType == ContentsType.Regular)
+        {
+            risuiRouletteType = Database.GetCrystallineConflictRouletteName(condition);
+            shouldSaveRisui = risuiRouletteType != null;
+            if (shouldSaveRisui)
+            {
+                PluginLog.Debug($"[OnCfPop] Detected risui crystalline conflict pop: {risuiRouletteType}, content: {condition.Name}");
+            }
         }
 
         Roulette.Init(null, rouletteType);
+        if (shouldSaveRisui)
+        {
+            RisuiRoulette.Init(null, risuiRouletteType);
+        }
+        else
+        {
+            RisuiRoulette.Clear();
+        }
 
         PluginLog.Debug(
-            $"[OnCfPop] PoppedContentType: {poppedContentType}, PoppedContentId: {poppedContentId}, rouletteType: {rouletteType}"
+            $"[OnCfPop] PoppedContentType: {poppedContentType}, PoppedContentId: {poppedContentId}, rouletteType: {rouletteType}, risuiRouletteType: {risuiRouletteType}, shouldSaveRisui: {shouldSaveRisui}"
         );
     }
 
     private static void OnDutyCompleted(IDutyStateEventArgs args)
     {
         PluginLog.Debug($"[OnDutyCompleted] {args.TerritoryType.ValueNullable?.RowId}");
-        if (Roulette.Instance == null) return;
-
-        Roulette.Instance.IsCompleted = true;
-        Roulette.Instance.EndedAt ??= DateTime.Now.ToString("T");
-        if (Roulette.Instance.RouletteType != null)
+        if (Roulette.Instance != null)
         {
-            Roulette.Instance.Finish();
+            Roulette.Instance.IsCompleted = true;
+            Roulette.Instance.EndedAt ??= DateTime.Now.ToString("T");
+            if (Roulette.Instance.RouletteType != null)
+            {
+                Roulette.Instance.Finish();
+            }
         }
+
+        if (RisuiRoulette.Instance == null) return;
+
+        RisuiRoulette.Instance.IsCompleted = true;
+        RisuiRoulette.Instance.EndedAt ??= DateTime.Now.ToString("T");
+        RisuiRoulette.Instance.ContentName ??= RisuiRoulette.Instance.RouletteType;
+        RisuiRoulette.Instance.Finish();
     }
 
     private void OnCommand(string command, string args)
     {
+        if (args.Trim().Equals("cfg", StringComparison.OrdinalIgnoreCase))
+        {
+            OpenConfigUi();
+            return;
+        }
+
         // in response to the slash command, just toggle the display status of our main ui
         ToggleMainUi();
     }
 
-    private void DrawUi() => WindowSystem.Draw();
+    private void DrawUi()
+    {
+        WindowSystem.Draw();
+        SyncMainUiOpenState();
+    }
 
     public void ToggleConfigUi() => ConfigWindow.Toggle();
-    public void ToggleMainUi() => MainWindow.Toggle();
+    public bool IsMainUiOpen => MainWindow.IsOpen;
+    public void ToggleMainUi()
+    {
+        MainWindow.Toggle();
+        SyncMainUiOpenState();
+    }
+
+    public void SetMainUiOpen(bool isOpen)
+    {
+        MainWindow.IsOpen = isOpen;
+        SyncMainUiOpenState();
+    }
+
     public void OpenConfigUi()
     {
         ConfigWindow.IsOpen = true;
         ConfigWindow.RequestFocus = true;
+    }
+
+    private void SyncMainUiOpenState()
+    {
+        if (Configuration.EnableFloatingWindow == MainWindow.IsOpen)
+        {
+            return;
+        }
+
+        Configuration.EnableFloatingWindow = MainWindow.IsOpen;
+        Configuration.Save();
     }
 
     private static void EnsureDefaultSubscriptions()
@@ -197,8 +269,89 @@ public sealed class Plugin : IDalamudPlugin
         Configuration.Save();
     }
 
+    private static void EnsureDefaultDailyTaskMonitors()
+    {
+        var validDailyTaskKeys = Database.GetDailyTaskMonitorOptions()
+            .Select(option => option.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var configurationChanged = false;
+        if (!Configuration.DefaultDailyTaskMonitorInitialized)
+        {
+            foreach (var option in Database.GetDailyTaskMonitorOptions())
+            {
+                configurationChanged |= Configuration.MonitoredDailyTaskKeys.Add(option.Key);
+            }
+        }
+
+        var staleDailyTaskKeys = Configuration.MonitoredDailyTaskKeys
+            .Where(key => !validDailyTaskKeys.Contains(key))
+            .ToArray();
+        var hadLegacyCrystallineConflictKeys = staleDailyTaskKeys.Any(key =>
+            key.StartsWith(Database.DailyTaskContentFinderConditionKeyPrefix, StringComparison.OrdinalIgnoreCase));
+        var migratedCrystallineConflictKeys = staleDailyTaskKeys
+            .Select(Database.GetCrystallineConflictMonitorKeyForRouletteKey)
+            .Where(key => key != null)
+            .Cast<string>()
+            .ToArray();
+
+        foreach (var key in staleDailyTaskKeys)
+        {
+            configurationChanged |= Configuration.MonitoredDailyTaskKeys.Remove(key);
+        }
+
+        if (hadLegacyCrystallineConflictKeys)
+        {
+            configurationChanged |= Configuration.MonitoredDailyTaskKeys.Add(Database.DailyTaskCrystallineConflictCasualKey);
+            configurationChanged |= Configuration.MonitoredDailyTaskKeys.Add(Database.DailyTaskCrystallineConflictRankedKey);
+        }
+
+        foreach (var key in migratedCrystallineConflictKeys)
+        {
+            configurationChanged |= Configuration.MonitoredDailyTaskKeys.Add(key);
+        }
+
+        if (!Configuration.DefaultDailyTaskMonitorInitialized)
+        {
+            Configuration.DefaultDailyTaskMonitorInitialized = true;
+            configurationChanged = true;
+        }
+
+        if (configurationChanged)
+        {
+            Configuration.Save();
+        }
+    }
+
     public static string? GetJobName() => PlayerState.ClassJob.ValueNullable?.Name.ToString();
     public static uint? GetJobId() => PlayerState.ClassJob.RowId;
+    public static string? GetPlayerName() => ObjectTable.LocalPlayer?.Name.TextValue;
+    public static string? GetPlayerWorldName()
+    {
+        var localPlayer = ObjectTable.LocalPlayer;
+
+        return localPlayer?.HomeWorld.ValueNullable?.Name.ToString() ??
+               localPlayer?.CurrentWorld.ValueNullable?.Name.ToString();
+    }
+
+    private static void UpdateRisuiRouletteTerritory(string? contentName)
+    {
+        if (RisuiRoulette.Instance == null)
+        {
+            return;
+        }
+
+        if (RisuiRoulette.Instance.ContentName == null)
+        {
+            RisuiRoulette.Instance.ContentName = string.IsNullOrWhiteSpace(contentName)
+                ? RisuiRoulette.Instance.RouletteType
+                : contentName;
+            return;
+        }
+
+        PluginLog.Debug("[OnTerritoryChanged] detected exited risui roulette, force to finish");
+        RisuiRoulette.Instance.Finish();
+    }
 
     public static unsafe string GetMentorRouletteAchievementProgressText()
     {

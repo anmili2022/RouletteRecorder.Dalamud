@@ -1,10 +1,10 @@
-# 日随伴侣交接文档
+﻿# 日随伴侣交接文档
 
 > 最后更新：2026-05-15  
 > 项目路径：`E:\git\RouletteRecorder.Dalamud`  
 > 插件名称：`日随伴侣`  
 > 内部名：`日随伴侣卫月版`  
-> 当前版本：`1.0.0.0`
+> 当前版本：`1.0.1.0`
 
 ## 1. 项目概述
 
@@ -20,6 +20,7 @@
 - 当前任务悬浮窗。
 - 经典样式和极简样式。
 - 悬浮窗透明度设置。
+- 开启或隐藏主悬浮窗。
 - 锁定悬浮窗。
 - 锁定后鼠标穿透。
 - 默认订阅指导者随机任务。
@@ -104,7 +105,7 @@ output/RouletteRecorder.Dalamud.json
 {
   "Name": "日随伴侣",
   "InternalName": "日随伴侣卫月版",
-  "AssemblyVersion": "1.0.0.0",
+  "AssemblyVersion": "1.0.1.0",
   "DalamudApiLevel": 15
 }
 ```
@@ -131,6 +132,7 @@ public string Language = "zh_CN";
 public HashSet<uint> SubscribedRouletteIds { get; set; } = [9];
 public FloatingWindowStyle FloatingWindowStyleMode { get; set; } = FloatingWindowStyle.Minimal;
 public float FloatingWindowOpacity { get; set; } = 0.54f;
+public bool EnableFloatingWindow { get; set; } = true;
 public bool LockFloatingWindow { get; set; } = false;
 public bool DefaultSubscriptionsInitialized { get; set; } = true;
 public bool MinimalShowCurrentTask { get; set; } = true;
@@ -147,6 +149,7 @@ public bool MinimalShowMentorRouletteTotalCount { get; set; } = false;
 | `SubscribedRouletteIds` | `[9]` | 默认订阅指导者随机任务 |
 | `FloatingWindowStyleMode` | `Minimal` | 默认极简样式 |
 | `FloatingWindowOpacity` | `0.54` | 默认悬浮窗透明度 54% |
+| `EnableFloatingWindow` | `true` | 默认开启主悬浮窗 |
 | `LockFloatingWindow` | `false` | 默认不锁定悬浮窗 |
 | `DefaultSubscriptionsInitialized` | `true` | 默认订阅初始化完成 |
 | `MinimalShowCurrentTask` | `true` | 显示当前任务 |
@@ -224,6 +227,7 @@ public bool LockFloatingWindow { get; set; }
 - 未锁定时：可以移动、可以缩放、鼠标不穿透。
 - 锁定时：按当前悬浮窗大小锁定，不可移动，不可缩放，鼠标穿透。
 - 只有选择“锁定悬浮窗”时才禁止放大缩小。
+- “锁定悬浮窗”旁边的“开启悬浮窗”控制主悬浮窗显示或隐藏，并同步到配置项 `EnableFloatingWindow`。
 
 实现重点：
 
@@ -393,6 +397,14 @@ rg "Members|Current Party Members|GetPartyMemberSummaries|CapturePartyMembers|Pa
 /prr
 ```
 
+打开或关闭主悬浮窗。
+
+```text
+/prr cfg
+```
+
+打开设置面板。
+
 ## 11. 验收检查清单
 
 每次修改后建议检查：
@@ -402,13 +414,15 @@ rg "Members|Current Party Members|GetPartyMemberSummaries|CapturePartyMembers|Pa
 - `output/RouletteRecorder.Dalamud.json` 中：
   - `Name` 为 `日随伴侣`。
   - `InternalName` 为 `日随伴侣卫月版`。
-  - `AssemblyVersion` 为 `1.0.0.0`。
+  - `AssemblyVersion` 为 `1.0.1.0`。
   - `DalamudApiLevel` 为 `15`。
 - 插件可以在 Dalamud 中加载。
 - `/prr` 可以打开或关闭悬浮窗。
+- `/prr cfg` 可以打开设置面板。
 - 极简样式无标题、无页签、无按钮。
 - 极简样式右键可打开设置窗口。
 - 极简样式今日导随任务次数为黄色。
+- 设置窗口中“开启悬浮窗”可以显示或隐藏主悬浮窗。
 - 经典样式显示项开关生效。
 - “任务时间”同时控制任务时长、开始时间、是否完成。
 - 锁定悬浮窗后不可移动、不可缩放、鼠标穿透。

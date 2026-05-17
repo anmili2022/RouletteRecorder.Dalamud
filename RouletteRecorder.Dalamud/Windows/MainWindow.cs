@@ -4,6 +4,7 @@ using Dalamud.Interface.Windowing;
 using RouletteRecorder.Dalamud.DAO;
 using RouletteRecorder.Dalamud.Utils;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Numerics;
@@ -24,7 +25,7 @@ public sealed class MainWindow : Window, IDisposable
             MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
         };
         this.plugin = plugin;
-        IsOpen = true;
+        IsOpen = Plugin.Configuration.EnableFloatingWindow;
     }
 
     public void Dispose() { }
@@ -45,6 +46,7 @@ public sealed class MainWindow : Window, IDisposable
             DrawClassicStyle();
         }
 
+        DrawRouletteCompletionTips();
         OpenConfigOnRightClick();
     }
 
@@ -61,7 +63,7 @@ public sealed class MainWindow : Window, IDisposable
             ? ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse | noScrollFlags | lockFlags
             : ImGuiWindowFlags.NoCollapse | noScrollFlags | lockFlags;
         ShowCloseButton = !isMinimal;
-        IsClickthrough = isLocked;
+        IsClickthrough = Plugin.Configuration.ClickthroughFloatingWindow;
         BgAlpha = Math.Clamp(Plugin.Configuration.FloatingWindowOpacity, 0.1f, 1.0f);
 
         SizeConstraints = new WindowSizeConstraints
@@ -135,6 +137,7 @@ public sealed class MainWindow : Window, IDisposable
         var showTaskTime = Plugin.Configuration.MinimalShowTaskTime;
         var showTodayCount = Plugin.Configuration.MinimalShowTodayMentorRouletteCount;
         var showTotalCount = Plugin.Configuration.MinimalShowMentorRouletteTotalCount;
+        var showCurrentTime = Plugin.Configuration.ShowCurrentTime;
 
         if (showCurrentTask && !hasCurrentTask)
         {
@@ -155,6 +158,11 @@ public sealed class MainWindow : Window, IDisposable
         }
 
         ImGui.Spacing();
+
+        if (showCurrentTime)
+        {
+            ImGui.TextColored(ImGuiColors.DalamudWhite, GetCurrentTimeText());
+        }
 
         if (showTodayCount)
         {
@@ -182,6 +190,7 @@ public sealed class MainWindow : Window, IDisposable
         var showTaskTime = Plugin.Configuration.MinimalShowTaskTime;
         var showTodayCount = Plugin.Configuration.MinimalShowTodayMentorRouletteCount;
         var showTotalCount = Plugin.Configuration.MinimalShowMentorRouletteTotalCount;
+        var showCurrentTime = Plugin.Configuration.ShowCurrentTime;
 
         if (showCurrentTask && roulette is not { RouletteType: not null } && roulette is not { ContentName: not null })
         {
@@ -204,6 +213,11 @@ public sealed class MainWindow : Window, IDisposable
         if (showCurrentTask)
         {
             ImGui.TextDisabled($"{Plugin.Localization.Localize("Content Name")}: {contentName}");
+        }
+
+        if (showCurrentTime)
+        {
+            ImGui.TextColored(ImGuiColors.DalamudWhite, GetCurrentTimeText());
         }
 
         if (showTodayCount)
@@ -287,11 +301,63 @@ public sealed class MainWindow : Window, IDisposable
         return roulette.GetDurationText(roulette.IsCompleted ? null : DateTime.Now);
     }
 
+    private static string GetCurrentTimeText()
+    {
+        return DateTime.Now.ToString("HH:mm:ss", CultureInfo.CurrentCulture);
+    }
+
     private static string FormatBoolean(bool? value)
     {
         return value == null
             ? "-"
             : Plugin.Localization.Localize(value.Value ? "Yes" : "No");
+    }
+
+    private static void DrawRouletteCompletionTips()
+    {
+        if (!Plugin.Configuration.ShowRouletteCompletionTips)
+        {
+            return;
+        }
+
+        if (!ImGui.IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows))
+        {
+            return;
+        }
+
+        ImGui.BeginTooltip();
+        ImGui.TextColored(ImGuiColors.DalamudYellow, "日随伴侣");
+        ImGui.Separator();
+
+        var hasMonitoredTasks = false;
+        var shownNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var option in Database.GetDailyTaskMonitorOptions())
+        {
+            if (!Plugin.Configuration.MonitoredDailyTaskKeys.Contains(option.Key) ||
+                !shownNames.Add(option.Name))
+            {
+                continue;
+            }
+
+            DrawRouletteCompletionTipLine(option.Key, option.Name);
+            hasMonitoredTasks = true;
+        }
+
+        if (!hasMonitoredTasks)
+        {
+            ImGui.TextDisabled(Plugin.Localization.Localize("No Monitored Daily Tasks"));
+        }
+
+        ImGui.EndTooltip();
+    }
+
+    private static void DrawRouletteCompletionTipLine(string taskKey, string rouletteName)
+    {
+        var isCompleted = Database.IsDailyTaskCompletedInCurrentResetCycle(taskKey, rouletteName);
+        var statusColor = isCompleted ? ImGuiColors.DalamudWhite : ImGuiColors.DalamudRed;
+        ImGui.TextUnformatted($"{rouletteName}: ");
+        ImGui.SameLine(0, 0);
+        ImGui.TextColored(statusColor, Plugin.Localization.Localize(isCompleted ? "Roulette Completed" : "Roulette Not Completed"));
     }
 
     private void OpenConfigOnRightClick()
