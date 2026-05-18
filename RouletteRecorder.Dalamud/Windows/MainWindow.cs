@@ -320,44 +320,160 @@ public sealed class MainWindow : Window, IDisposable
             return;
         }
 
+        if (Plugin.Configuration.PinRouletteCompletionTips)
+        {
+            DrawPinnedRouletteCompletionTipsWindow();
+            return;
+        }
+
         if (!ImGui.IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows))
         {
             return;
         }
 
         ImGui.BeginTooltip();
+        DrawRouletteCompletionTipsContent();
+        ImGui.EndTooltip();
+    }
+
+    private static void DrawPinnedRouletteCompletionTipsWindow()
+    {
+        var open = true;
+        ImGui.SetNextWindowBgAlpha(Math.Clamp(Plugin.Configuration.FloatingWindowOpacity, 0.1f, 1.0f));
+        if (ImGui.Begin(
+                $"{Plugin.Localization.Localize("Pinned Completion Tips Title")}###rouletteRecorderPinnedCompletionTips",
+                ref open,
+                ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoCollapse))
+        {
+            DrawRouletteCompletionTipsContent();
+        }
+        ImGui.End();
+
+        if (!open)
+        {
+            Plugin.Configuration.PinRouletteCompletionTips = false;
+            Plugin.Configuration.Save();
+        }
+    }
+
+    private static void DrawRouletteCompletionTipsContent()
+    {
         ImGui.TextColored(ImGuiColors.DalamudYellow, "日随伴侣");
         ImGui.Separator();
 
-        var hasMonitoredTasks = false;
-        var shownNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var option in Database.GetDailyTaskMonitorOptions())
+        var hasSelectedTasks = false;
+        var hasVisibleTasks = false;
+
+        DrawMonitorTaskTipSection(
+            "Daily Tasks",
+            Database.GetDailyTaskMonitorOptions(),
+            Plugin.Configuration.MonitoredDailyTaskKeys,
+            Database.GetDailyMonitorTaskStatus,
+            ref hasSelectedTasks,
+            ref hasVisibleTasks);
+
+        DrawMonitorTaskTipSection(
+            "Weekly Tasks",
+            Database.GetWeeklyNonSavageTaskMonitorOptions(),
+            Plugin.Configuration.MonitoredWeeklyTaskKeys,
+            Database.GetWeeklyMonitorTaskStatus,
+            ref hasSelectedTasks,
+            ref hasVisibleTasks);
+
+        DrawMonitorTaskTipSection(
+            "Savage Raid Tasks",
+            Database.GetWeeklySavageTaskMonitorOptions(),
+            Plugin.Configuration.MonitoredWeeklyTaskKeys,
+            Database.GetWeeklyMonitorTaskStatus,
+            ref hasSelectedTasks,
+            ref hasVisibleTasks);
+
+        if (!hasSelectedTasks)
         {
-            if (!Plugin.Configuration.MonitoredDailyTaskKeys.Contains(option.Key) ||
+            ImGui.TextDisabled(Plugin.Localization.Localize("No Monitored Tasks"));
+        }
+        else if (!hasVisibleTasks)
+        {
+            ImGui.TextDisabled(Plugin.Localization.Localize("All Selected Monitor Tasks Completed"));
+        }
+    }
+
+    private static void DrawMonitorTaskTipSection(
+        string sectionTitleKey,
+        IEnumerable<(string Key, string Name)> options,
+        HashSet<string> selectedTaskKeys,
+        Func<string, string, MonitorTaskStatus> getStatus,
+        ref bool hasSelectedTasks,
+        ref bool hasVisibleTasks)
+    {
+        var sectionStarted = false;
+        var shownNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var option in options)
+        {
+            if (!selectedTaskKeys.Contains(option.Key) ||
                 !shownNames.Add(option.Name))
             {
                 continue;
             }
 
-            DrawRouletteCompletionTipLine(option.Key, option.Name);
-            hasMonitoredTasks = true;
-        }
+            hasSelectedTasks = true;
+            var status = getStatus(option.Key, option.Name);
+            if (Plugin.Configuration.HideCompletedMonitorTasks &&
+                status.State == MonitorTaskCompletionState.Completed)
+            {
+                continue;
+            }
 
-        if (!hasMonitoredTasks)
-        {
-            ImGui.TextDisabled(Plugin.Localization.Localize("No Monitored Daily Tasks"));
-        }
+            if (!sectionStarted)
+            {
+                if (hasVisibleTasks)
+                {
+                    ImGui.Separator();
+                }
 
-        ImGui.EndTooltip();
+                ImGui.TextColored(ImGuiColors.DalamudYellow, Plugin.Localization.Localize(sectionTitleKey));
+                sectionStarted = true;
+            }
+
+            DrawMonitorTaskTipLine(GetMonitorTaskTipDisplayName(option.Key, option.Name), status);
+            hasVisibleTasks = true;
+        }
     }
 
-    private static void DrawRouletteCompletionTipLine(string taskKey, string rouletteName)
+    private static string GetMonitorTaskTipDisplayName(string taskKey, string taskName)
     {
-        var isCompleted = Database.IsDailyTaskCompletedInCurrentResetCycle(taskKey, rouletteName);
-        var statusColor = isCompleted ? ImGuiColors.DalamudWhite : ImGuiColors.DalamudRed;
-        ImGui.TextUnformatted($"{rouletteName}: ");
+        if (string.Equals(taskKey, Database.WeeklyTaskCurrentAllianceRaidKey, StringComparison.OrdinalIgnoreCase))
+        {
+            return Plugin.Localization.Localize("Current Alliance Raid Tip Name");
+        }
+
+        if (string.Equals(taskKey, Database.WeeklyTaskUnrealTrialKey, StringComparison.OrdinalIgnoreCase))
+        {
+            return Plugin.Localization.Localize("Unreal Trial Tip Name");
+        }
+
+        return taskName;
+    }
+
+    private static void DrawMonitorTaskTipLine(string taskName, MonitorTaskStatus status)
+    {
+        var statusColor = status.State switch
+        {
+            MonitorTaskCompletionState.Completed => ImGuiColors.DalamudWhite,
+            MonitorTaskCompletionState.NotCompleted => ImGuiColors.DalamudRed,
+            _ => ImGuiColors.DalamudGrey
+        };
+
+        ImGui.TextUnformatted($"{taskName}: ");
         ImGui.SameLine(0, 0);
-        ImGui.TextColored(statusColor, Plugin.Localization.Localize(isCompleted ? "Roulette Completed" : "Roulette Not Completed"));
+        ImGui.TextColored(statusColor, Plugin.Localization.Localize(status.StatusText));
+
+        if (!string.IsNullOrWhiteSpace(status.DetailText))
+        {
+            ImGui.SameLine();
+            ImGui.TextDisabled($"({status.DetailText})");
+        }
     }
 
     private void OpenConfigOnRightClick()

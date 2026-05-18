@@ -40,9 +40,15 @@ public class Configuration : IPluginConfiguration
     public bool LockFloatingWindow { get; set; } = true;
     public bool ClickthroughFloatingWindow { get; set; } = false;
     public bool ShowRouletteCompletionTips { get; set; } = true;
+    public bool PinRouletteCompletionTips { get; set; } = false;
+    public bool HideCompletedMonitorTasks { get; set; } = false;
     public bool DefaultSubscriptionsInitialized { get; set; } = true;
     public bool DefaultDailyTaskMonitorInitialized { get; set; } = true;
-    public HashSet<string> MonitoredDailyTaskKeys { get; set; } = ["roulette:3", "roulette:5", "roulette:6", "roulette:7", "roulette:8", "roulette:17"];
+    public bool DefaultDailyUtilityTaskMonitorInitialized { get; set; } = true;
+    public bool DefaultWeeklyTaskMonitorInitialized { get; set; } = true;
+    public HashSet<string> MonitoredDailyTaskKeys { get; set; } = ["roulette:3", "roulette:5", "roulette:6", "roulette:7", "roulette:8", "roulette:17", "daily:tribalQuestsAllowance"];
+    public HashSet<string> MonitoredWeeklyTaskKeys { get; set; } = ["weekly:wondrousTails", "weekly:currentAllianceRaid", "weekly:unrealTrial", "weekly:savageRaid:1"];
+    public int TribalQuestCompletionCount { get; set; } = 3;
     public bool MinimalShowCurrentTask { get; set; } = false;
     public bool MinimalShowTaskTime { get; set; } = false;
     public bool MinimalShowTodayMentorRouletteCount { get; set; } = true;
@@ -60,6 +66,14 @@ public class Configuration : IPluginConfiguration
     public bool SetMonitoredDailyTaskKey(string key, bool selected)
     {
         var ret = selected ? MonitoredDailyTaskKeys.Add(key) : MonitoredDailyTaskKeys.Remove(key);
+        Save();
+
+        return ret;
+    }
+
+    public bool SetMonitoredWeeklyTaskKey(string key, bool selected)
+    {
+        var ret = selected ? MonitoredWeeklyTaskKeys.Add(key) : MonitoredWeeklyTaskKeys.Remove(key);
         Save();
 
         return ret;

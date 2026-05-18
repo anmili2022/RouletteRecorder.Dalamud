@@ -6,7 +6,7 @@ using System.Globalization;
 
 namespace RouletteRecorder.Dalamud.DAO;
 
-public class RisuiRoulette(string? contentName, string? rouletteType, bool isCompleted = false)
+public class TaskHistoryRoulette(string? contentName, string? rouletteType, bool isCompleted = false)
 {
     [JsonProperty(Order = 0)]
     public string? RouletteType { get; set; } = rouletteType;
@@ -35,12 +35,18 @@ public class RisuiRoulette(string? contentName, string? rouletteType, bool isCom
     [JsonProperty("world", Order = 8)]
     public string? World { get; set; }
 
-    [JsonIgnore]
-    public static RisuiRoulette? Instance { get; private set; }
+    [JsonProperty("monitorTaskKey", Order = 9)]
+    public string? MonitorTaskKey { get; set; }
 
-    public static void Init(string? contentName = null, string? rouletteType = null, bool isCompleted = false)
+    [JsonIgnore]
+    public static TaskHistoryRoulette? Instance { get; private set; }
+
+    public static void Init(string? contentName = null, string? rouletteType = null, bool isCompleted = false, string? monitorTaskKey = null)
     {
-        Instance = new RisuiRoulette(contentName, rouletteType, isCompleted);
+        Instance = new TaskHistoryRoulette(contentName, rouletteType, isCompleted)
+        {
+            MonitorTaskKey = monitorTaskKey
+        };
     }
 
     public static void Clear()
@@ -83,12 +89,12 @@ public class RisuiRoulette(string? contentName, string? rouletteType, bool isCom
             Instance.World = Plugin.GetPlayerWorldName() ?? "未知服务器";
             Instance.EndedAt ??= DateTime.Now.ToString("T");
 
-            Database.InsertRisuiRoulette(Instance);
+            Database.InsertTaskHistoryRoulette(Instance);
             Instance = null;
         }
         catch (Exception e)
         {
-            Plugin.PluginLog.Error(e, "Failed to finish risui roulette");
+            Plugin.PluginLog.Error(e, "Failed to finish task history roulette");
         }
     }
 

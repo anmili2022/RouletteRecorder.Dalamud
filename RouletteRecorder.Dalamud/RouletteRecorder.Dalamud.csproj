@@ -1,11 +1,11 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
     <PropertyGroup>
-        <Version>1.0.1.0</Version>
-        <AssemblyVersion>1.0.1.0</AssemblyVersion>
-        <FileVersion>1.0.1.0</FileVersion>
-        <InformationalVersion>1.0.1.0</InformationalVersion>
+        <Version>1.0.2.0</Version>
+        <AssemblyVersion>1.0.2.0</AssemblyVersion>
+        <FileVersion>1.0.2.0</FileVersion>
+        <InformationalVersion>1.0.2.0</InformationalVersion>
         <Name>日随伴侣</Name>
         <Punchline>自动记录每日随机任务，包括指导者随机任务。&#x0A;&#x0A;Auto record your daily roulettes including mentor roulettes.</Punchline>
         <Description>帮助你记录每日随机任务、导出报告，并实时同步到 DungeonLogger。&#x0A;&#x0A;Help you to record your daily roulettes, export reports, and sync with DungeonLogger in real time.</Description>
@@ -32,3 +32,4 @@
         <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\Build\LocalizeOutputManifest.ps1&quot; -ManifestPath &quot;$(OutputPath)$(AssemblyName).json&quot; -PackageZipPath &quot;$(OutputPath)$(AssemblyName)\latest.zip&quot;" />
     </Target>
 </Project>
+

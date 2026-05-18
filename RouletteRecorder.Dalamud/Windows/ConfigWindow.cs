@@ -2,11 +2,14 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
+using RouletteRecorder.Dalamud.DAO;
 using RouletteRecorder.Dalamud.Network.DungeonLogger;
 using RouletteRecorder.Dalamud.Utils;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
 
@@ -33,7 +36,7 @@ public sealed class ConfigWindow : Window, IDisposable
         this.plugin = plugin;
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(520, 560),
+            MinimumSize = Vector2.Zero,
             MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
         };
     }
@@ -48,6 +51,7 @@ public sealed class ConfigWindow : Window, IDisposable
         DrawDailyTaskMonitorSection();
         DrawSubscribedRouletteTypesSection();
         DrawDungeonLoggerSection();
+        DrawStoredRecordsSection();
     }
 
     private static void DrawHeader()
@@ -138,6 +142,7 @@ public sealed class ConfigWindow : Window, IDisposable
             Plugin.Configuration.FloatingWindowOpacity = Math.Clamp(opacityPercent / 100f, 0.1f, 1.0f);
             Plugin.Configuration.Save();
         }
+        ImGui.TextDisabled(Plugin.Localization.Localize("Floating Window Opacity Hint"));
 
         ImGui.Spacing();
         DrawSubTitle("Window Behavior");
@@ -170,8 +175,25 @@ public sealed class ConfigWindow : Window, IDisposable
         if (ImGui.Checkbox(Plugin.Localization.Localize("Show Roulette Completion Tips"), ref showRouletteCompletionTips))
         {
             Plugin.Configuration.ShowRouletteCompletionTips = showRouletteCompletionTips;
+            if (!showRouletteCompletionTips)
+            {
+                Plugin.Configuration.PinRouletteCompletionTips = false;
+            }
+
             Plugin.Configuration.Save();
         }
+
+        ImGui.SameLine();
+        DrawPinnedCompletionTipsButton();
+
+        var hideCompletedMonitorTasks = Plugin.Configuration.HideCompletedMonitorTasks;
+        if (ImGui.Checkbox(Plugin.Localization.Localize("Hide Completed Tasks"), ref hideCompletedMonitorTasks))
+        {
+            Plugin.Configuration.HideCompletedMonitorTasks = hideCompletedMonitorTasks;
+            Plugin.Configuration.Save();
+        }
+
+        ImGui.TextDisabled(Plugin.Localization.Localize("Hide Completed Tasks Hint"));
 
         ImGui.Spacing();
         DrawSubTitle("Display Content");
@@ -200,28 +222,98 @@ public sealed class ConfigWindow : Window, IDisposable
         ImGui.Spacing();
     }
 
-    private static void DrawDailyTaskMonitorSection()
+    private void DrawDailyTaskMonitorSection()
     {
-        if (!ImGui.CollapsingHeader(Plugin.Localization.Localize("Daily Task Monitor"), ImGuiTreeNodeFlags.DefaultOpen))
+        if (!ImGui.CollapsingHeader(Plugin.Localization.Localize("Daily And Weekly Task Monitor"), ImGuiTreeNodeFlags.DefaultOpen))
         {
             return;
         }
 
         ImGui.Indent();
-        ImGui.TextDisabled(Plugin.Localization.Localize("Daily Task Monitor Hint"));
+        ImGui.TextDisabled(Plugin.Localization.Localize("Daily And Weekly Task Monitor Hint"));
         ImGui.Spacing();
 
-        if (ImGui.BeginTable("DailyTaskMonitorTable", 2, ImGuiTableFlags.SizingStretchProp))
+        DrawSubTitle("Daily Tasks");
+        DrawTaskMonitorOptionTable(
+            "DailyTaskMonitorTable",
+            Database.GetDailyTaskMonitorOptions(),
+            optionKey => Plugin.Configuration.MonitoredDailyTaskKeys.Contains(optionKey),
+            (optionKey, selected) => Plugin.Configuration.SetMonitoredDailyTaskKey(optionKey, selected),
+            "dailyTaskMonitor");
+
+        DrawTribalQuestCompletionCountSlider();
+
+        ImGui.Spacing();
+        DrawSubTitle("Weekly Task Module");
+        DrawTaskMonitorOptionTable(
+            "WeeklyTaskMonitorTable",
+            Database.GetWeeklyNonSavageTaskMonitorOptions(),
+            optionKey => Plugin.Configuration.MonitoredWeeklyTaskKeys.Contains(optionKey),
+            (optionKey, selected) => Plugin.Configuration.SetMonitoredWeeklyTaskKey(optionKey, selected),
+            "weeklyTaskMonitor");
+
+        ImGui.Spacing();
+        DrawSubTitle("Savage Raid Task Module");
+        DrawWeeklySavageTaskModule();
+
+        ImGui.Unindent();
+        ImGui.Spacing();
+    }
+
+    private static void DrawTribalQuestCompletionCountSlider()
+    {
+        ImGui.Spacing();
+
+        var completionCount = Math.Clamp(Plugin.Configuration.TribalQuestCompletionCount, 1, Database.MaxTribalQuestAllowance);
+        ImGui.SetNextItemWidth(-1f);
+        if (ImGui.SliderInt(
+                $"{Plugin.Localization.Localize("Tribal Quest Completion Count")}##tribalQuestCompletionCount",
+                ref completionCount,
+                1,
+                Database.MaxTribalQuestAllowance,
+                "%d"))
+        {
+            Plugin.Configuration.TribalQuestCompletionCount = completionCount;
+            Plugin.Configuration.Save();
+        }
+
+        ImGui.TextDisabled(Plugin.Localization.Localize("Tribal Quest Completion Count Hint"));
+    }
+
+    private static void DrawWeeklySavageTaskModule()
+    {
+        var savageOptions = Database.GetWeeklySavageTaskMonitorOptions().ToArray();
+        DrawTaskMonitorOptionTable(
+            "WeeklySavageTaskMonitorTable",
+            savageOptions,
+            optionKey => Plugin.Configuration.MonitoredWeeklyTaskKeys.Contains(optionKey),
+            (optionKey, selected) => Plugin.Configuration.SetMonitoredWeeklyTaskKey(optionKey, selected),
+            "weeklySavageTaskMonitor");
+
+        ImGui.Spacing();
+        ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.DalamudGrey);
+        ImGui.TextWrapped(Plugin.Localization.Localize("Savage Raid Tasks Hint"));
+        ImGui.PopStyleColor();
+    }
+
+    private static void DrawTaskMonitorOptionTable(
+        string tableId,
+        IEnumerable<(string Key, string Name)> options,
+        Func<string, bool> isSelected,
+        Action<string, bool> setSelected,
+        string checkboxIdPrefix)
+    {
+        if (ImGui.BeginTable(tableId, 2, ImGuiTableFlags.SizingStretchProp))
         {
             var index = 0;
-            foreach (var option in Database.GetDailyTaskMonitorOptions())
+            foreach (var option in options)
             {
                 ImGui.TableNextColumn();
 
-                var selected = Plugin.Configuration.MonitoredDailyTaskKeys.Contains(option.Key);
-                if (ImGui.Checkbox($"{option.Name}##dailyTaskMonitor{option.Key}", ref selected))
+                var selected = isSelected(option.Key);
+                if (ImGui.Checkbox($"{option.Name}##{checkboxIdPrefix}{option.Key}", ref selected))
                 {
-                    Plugin.Configuration.SetMonitoredDailyTaskKey(option.Key, selected);
+                    setSelected(option.Key, selected);
                 }
 
                 index++;
@@ -233,9 +325,6 @@ public sealed class ConfigWindow : Window, IDisposable
 
             ImGui.EndTable();
         }
-
-        ImGui.Unindent();
-        ImGui.Spacing();
     }
 
     private static void DrawSubscribedRouletteTypesSection()
@@ -310,6 +399,209 @@ public sealed class ConfigWindow : Window, IDisposable
         DrawLoginStatus();
         ImGui.Unindent();
         ImGui.Spacing();
+    }
+
+    private static void DrawPinnedCompletionTipsButton()
+    {
+        var isPinned = Plugin.Configuration.PinRouletteCompletionTips;
+        var label = Plugin.Localization.Localize(isPinned ? "Unpin Completion Tips" : "Pin Completion Tips");
+
+        if (!Plugin.Configuration.ShowRouletteCompletionTips)
+        {
+            ImGui.BeginDisabled();
+        }
+
+        if (ImGui.Button(label))
+        {
+            Plugin.Configuration.PinRouletteCompletionTips = !isPinned;
+            Plugin.Configuration.Save();
+        }
+
+        if (!Plugin.Configuration.ShowRouletteCompletionTips)
+        {
+            ImGui.EndDisabled();
+        }
+    }
+
+    private static void DrawStoredRecordsSection()
+    {
+        DrawSubscribedTaskRecordsSection();
+        DrawTaskHistoryRecordsSection();
+    }
+
+    private static void DrawSubscribedTaskRecordsSection()
+    {
+        if (!ImGui.CollapsingHeader(Plugin.Localization.Localize("Subscribed Task Records")))
+        {
+            return;
+        }
+
+        ImGui.Indent();
+        ImGui.TextDisabled(string.Format(
+            Plugin.Localization.Localize("Record Count Format"),
+            Database.Roulettes.Count));
+        ImGui.TextDisabled(Database.DbPath);
+
+        if (Database.Roulettes.Count == 0)
+        {
+            ImGui.TextDisabled(Plugin.Localization.Localize("No history records"));
+            ImGui.Unindent();
+            ImGui.Spacing();
+            return;
+        }
+
+        var tableFlags = ImGuiTableFlags.Borders |
+                         ImGuiTableFlags.RowBg |
+                         ImGuiTableFlags.Resizable |
+                         ImGuiTableFlags.ScrollX |
+                         ImGuiTableFlags.ScrollY |
+                         ImGuiTableFlags.SizingFixedFit;
+
+        if (ImGui.BeginTable("ConfigHistoryRecordsTable", 7, tableFlags, new Vector2(0, 280f)))
+        {
+            ImGui.TableSetupColumn(Plugin.Localization.Localize("Content Name"));
+            ImGui.TableSetupColumn(Plugin.Localization.Localize("Task Type"));
+            ImGui.TableSetupColumn(Plugin.Localization.Localize("Duration"));
+            ImGui.TableSetupColumn(Plugin.Localization.Localize("Start Time"));
+            ImGui.TableSetupColumn(Plugin.Localization.Localize("End Time"));
+            ImGui.TableSetupColumn(Plugin.Localization.Localize("Job Name"));
+            ImGui.TableSetupColumn(Plugin.Localization.Localize("Completed"));
+            ImGui.TableHeadersRow();
+
+            foreach (var record in Database.Roulettes.AsEnumerable().Reverse())
+            {
+                ImGui.TableNextRow();
+
+                ImGui.TableNextColumn();
+                ImGui.TextWrapped(record.ContentName ?? "-");
+
+                ImGui.TableNextColumn();
+                ImGui.TextWrapped(record.RouletteType ?? "-");
+
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted(record.GetDurationText(record.IsCompleted ? null : DateTime.Now));
+
+                ImGui.TableNextColumn();
+                ImGui.TextWrapped(record.GetStartTimeText());
+
+                ImGui.TableNextColumn();
+                ImGui.TextWrapped(record.GetEndTimeText());
+
+                ImGui.TableNextColumn();
+                ImGui.TextWrapped(record.JobName ?? "-");
+
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted(Plugin.Localization.Localize(record.IsCompleted ? "Yes" : "No"));
+            }
+
+            ImGui.EndTable();
+        }
+
+        ImGui.Unindent();
+        ImGui.Spacing();
+    }
+
+    private static void DrawTaskHistoryRecordsSection()
+    {
+        Database.ReloadTaskHistoryIfChanged();
+
+        if (!ImGui.CollapsingHeader(Plugin.Localization.Localize("Task History Records")))
+        {
+            return;
+        }
+
+        ImGui.Indent();
+        ImGui.TextDisabled(string.Format(
+            Plugin.Localization.Localize("Record Count Format"),
+            Database.TaskHistoryRoulettes.Count));
+        ImGui.TextDisabled(Database.TaskHistoryDbPath);
+
+        if (Database.TaskHistoryRoulettes.Count == 0)
+        {
+            ImGui.TextDisabled(Plugin.Localization.Localize("No history records"));
+            ImGui.Unindent();
+            ImGui.Spacing();
+            return;
+        }
+
+        var tableFlags = ImGuiTableFlags.Borders |
+                         ImGuiTableFlags.RowBg |
+                         ImGuiTableFlags.Resizable |
+                         ImGuiTableFlags.ScrollX |
+                         ImGuiTableFlags.ScrollY |
+                         ImGuiTableFlags.SizingFixedFit;
+
+        if (ImGui.BeginTable("ConfigTaskHistoryRecordsTable", 10, tableFlags, new Vector2(0, 320f)))
+        {
+            ImGui.TableSetupColumn(Plugin.Localization.Localize("Content Name"));
+            ImGui.TableSetupColumn(Plugin.Localization.Localize("Task Type"));
+            ImGui.TableSetupColumn(Plugin.Localization.Localize("Start Time"));
+            ImGui.TableSetupColumn(Plugin.Localization.Localize("End Time"));
+            ImGui.TableSetupColumn(Plugin.Localization.Localize("Job Name"));
+            ImGui.TableSetupColumn(Plugin.Localization.Localize("Completed"));
+            ImGui.TableSetupColumn(Plugin.Localization.Localize("Player Name"));
+            ImGui.TableSetupColumn(Plugin.Localization.Localize("World"));
+            ImGui.TableSetupColumn(Plugin.Localization.Localize("Monitor Task Key"));
+            ImGui.TableSetupColumn(Plugin.Localization.Localize("Record Source"));
+            ImGui.TableHeadersRow();
+
+            foreach (var record in Database.TaskHistoryRoulettes.AsEnumerable().Reverse())
+            {
+                ImGui.TableNextRow();
+
+                ImGui.TableNextColumn();
+                ImGui.TextWrapped(record.ContentName ?? "-");
+
+                ImGui.TableNextColumn();
+                ImGui.TextWrapped(record.RouletteType ?? "-");
+
+                ImGui.TableNextColumn();
+                ImGui.TextWrapped(GetTaskHistoryStartTimeText(record));
+
+                ImGui.TableNextColumn();
+                ImGui.TextWrapped(GetTaskHistoryEndTimeText(record));
+
+                ImGui.TableNextColumn();
+                ImGui.TextWrapped(record.JobName ?? "-");
+
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted(Plugin.Localization.Localize(record.IsCompleted ? "Yes" : "No"));
+
+                ImGui.TableNextColumn();
+                ImGui.TextWrapped(record.PlayerName ?? "-");
+
+                ImGui.TableNextColumn();
+                ImGui.TextWrapped(record.World ?? "-");
+
+                ImGui.TableNextColumn();
+                ImGui.TextWrapped(record.MonitorTaskKey ?? "-");
+
+                ImGui.TableNextColumn();
+                ImGui.TextWrapped(record.MonitorTaskKey.IsNullOrWhitespace()
+                    ? Plugin.Localization.Localize("Daily Roulette Record")
+                    : Plugin.Localization.Localize("Monitor Task Record"));
+            }
+
+            ImGui.EndTable();
+        }
+
+        ImGui.Unindent();
+        ImGui.Spacing();
+    }
+
+    private static string GetTaskHistoryStartTimeText(TaskHistoryRoulette record)
+    {
+        return record.GetStartedDateTime()?.ToString("yyyy-MM-dd HH:mm:ss") ?? $"{record.Date} {record.StartedAt}";
+    }
+
+    private static string GetTaskHistoryEndTimeText(TaskHistoryRoulette record)
+    {
+        if (record.EndedAt.IsNullOrWhitespace())
+        {
+            return "-";
+        }
+
+        return record.GetEndedDateTime()?.ToString("yyyy-MM-dd HH:mm:ss") ?? $"{record.Date} {record.EndedAt}";
     }
 
     private static void DrawLoginInput(string labelKey, string id, ref string value, ImGuiInputTextFlags flags)
