@@ -40,6 +40,7 @@ public sealed class Plugin : IDalamudPlugin
     public readonly WindowSystem WindowSystem = new("日随伴侣");
     private ConfigWindow ConfigWindow { get; init; }
     private MainWindow MainWindow { get; init; }
+    private NoteWindow NoteWindow { get; init; }
     private static DateTime lastMentorRouletteAchievementRequest = DateTime.MinValue;
     private static uint? mentorRouletteAchievementCurrent;
     private static uint? mentorRouletteAchievementMax;
@@ -57,13 +58,15 @@ public sealed class Plugin : IDalamudPlugin
 
         ConfigWindow = new ConfigWindow(this);
         MainWindow = new MainWindow(this);
+        NoteWindow = new NoteWindow();
 
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
+        WindowSystem.AddWindow(NoteWindow);
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "打开或关闭日随伴侣悬浮窗；/prr cfg 打开设置面板"
+            HelpMessage = "打开或关闭日随伴侣悬浮窗；/prr cfg 打开设置面板；/prr bq 打开或关闭便签"
         });
 
         ClientState.CfPop += OnCfPop;
@@ -83,6 +86,7 @@ public sealed class Plugin : IDalamudPlugin
 
         ConfigWindow.Dispose();
         MainWindow.Dispose();
+        NoteWindow.Dispose();
 
         CommandManager.RemoveHandler(CommandName);
 
@@ -215,9 +219,16 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnCommand(string command, string args)
     {
-        if (args.Trim().Equals("cfg", StringComparison.OrdinalIgnoreCase))
+        var trimmedArgs = args.Trim();
+        if (trimmedArgs.Equals("cfg", StringComparison.OrdinalIgnoreCase))
         {
             OpenConfigUi();
+            return;
+        }
+
+        if (trimmedArgs.Equals("bq", StringComparison.OrdinalIgnoreCase))
+        {
+            ToggleNoteUi();
             return;
         }
 
@@ -229,6 +240,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         WindowSystem.Draw();
         SyncMainUiOpenState();
+        SyncNoteUiOpenState();
     }
 
     public void ToggleConfigUi() => ConfigWindow.Toggle();
@@ -251,6 +263,19 @@ public sealed class Plugin : IDalamudPlugin
         ConfigWindow.RequestFocus = true;
     }
 
+    public bool IsNoteUiOpen => NoteWindow.IsOpen;
+    public void ToggleNoteUi()
+    {
+        NoteWindow.Toggle();
+        SyncNoteUiOpenState();
+    }
+
+    public void SetNoteUiOpen(bool isOpen)
+    {
+        NoteWindow.IsOpen = isOpen;
+        SyncNoteUiOpenState();
+    }
+
     private void SyncMainUiOpenState()
     {
         if (Configuration.EnableFloatingWindow == MainWindow.IsOpen)
@@ -259,6 +284,17 @@ public sealed class Plugin : IDalamudPlugin
         }
 
         Configuration.EnableFloatingWindow = MainWindow.IsOpen;
+        Configuration.Save();
+    }
+
+    private void SyncNoteUiOpenState()
+    {
+        if (Configuration.EnableNoteWindow == NoteWindow.IsOpen)
+        {
+            return;
+        }
+
+        Configuration.EnableNoteWindow = NoteWindow.IsOpen;
         Configuration.Save();
     }
 

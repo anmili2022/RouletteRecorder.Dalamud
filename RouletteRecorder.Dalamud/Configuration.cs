@@ -13,6 +13,18 @@ public enum FloatingWindowStyle
     Minimal = 1,
 }
 
+public enum NoteScope
+{
+    Public = 0,
+    Character = 1,
+}
+
+public enum NoteBackgroundStyle
+{
+    Frosted = 0,
+    Transparent = 1,
+}
+
 [Serializable]
 public class DungeonLoggerConfig
 {
@@ -54,6 +66,14 @@ public class Configuration : IPluginConfiguration
     public bool MinimalShowTodayMentorRouletteCount { get; set; } = true;
     public bool MinimalShowMentorRouletteTotalCount { get; set; } = false;
     public bool ShowCurrentTime { get; set; } = true;
+    public bool EnableNoteWindow { get; set; } = false;
+    public NoteScope NoteScopeMode { get; set; } = NoteScope.Public;
+    public NoteBackgroundStyle NoteBackgroundStyleMode { get; set; } = NoteBackgroundStyle.Frosted;
+    public float NoteFrostedStrength { get; set; } = 1.0f;
+    public float NoteFrostedWindowOpacity { get; set; } = 0.45f;
+    public float NoteTransparentWindowOpacity { get; set; } = 0.12f;
+    public string PublicNoteContent { get; set; } = string.Empty;
+    public Dictionary<string, string> CharacterNoteContents { get; set; } = [];
 
     public bool SetSubscribedRouletteId(ContentRoulette roulette, bool selected)
     {

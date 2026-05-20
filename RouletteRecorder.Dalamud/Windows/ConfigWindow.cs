@@ -48,6 +48,7 @@ public sealed class ConfigWindow : Window, IDisposable
         DrawHeader();
         DrawSaveFolderSection();
         DrawFloatingWindowStyleSection();
+        DrawPersonalNoteSection();
         DrawDailyTaskMonitorSection();
         DrawSubscribedRouletteTypesSection();
         DrawDungeonLoggerSection();
@@ -220,6 +221,123 @@ public sealed class ConfigWindow : Window, IDisposable
 
         ImGui.Unindent();
         ImGui.Spacing();
+    }
+
+    private void DrawPersonalNoteSection()
+    {
+        if (!ImGui.CollapsingHeader(Plugin.Localization.Localize("Personal Note"), ImGuiTreeNodeFlags.DefaultOpen))
+        {
+            return;
+        }
+
+        ImGui.Indent();
+        ImGui.TextDisabled(Plugin.Localization.Localize("Personal Note Hint"));
+
+        var enableNoteWindow = plugin.IsNoteUiOpen;
+        if (ImGui.Checkbox(Plugin.Localization.Localize("Enable Note Window"), ref enableNoteWindow))
+        {
+            plugin.SetNoteUiOpen(enableNoteWindow);
+        }
+
+        ImGui.Spacing();
+
+        ImGui.TextUnformatted(Plugin.Localization.Localize("Note Type"));
+        var currentScope = Plugin.Configuration.NoteScopeMode;
+        DrawNoteScopeRadioButton(NoteScope.Public, ref currentScope);
+        ImGui.SameLine();
+        DrawNoteScopeRadioButton(NoteScope.Character, ref currentScope);
+
+        ImGui.TextWrapped(GetNoteScopeDescription(currentScope));
+        ImGui.Spacing();
+
+        ImGui.TextUnformatted(Plugin.Localization.Localize("Note Background Style"));
+        var currentBackgroundStyle = Plugin.Configuration.NoteBackgroundStyleMode;
+        DrawNoteBackgroundStyleRadioButton(NoteBackgroundStyle.Frosted, ref currentBackgroundStyle);
+        ImGui.SameLine();
+        DrawNoteBackgroundStyleRadioButton(NoteBackgroundStyle.Transparent, ref currentBackgroundStyle);
+
+        ImGui.TextWrapped(GetNoteBackgroundStyleDescription(currentBackgroundStyle));
+        DrawNoteAppearanceSliders(currentBackgroundStyle);
+
+        ImGui.Unindent();
+        ImGui.Spacing();
+    }
+
+    private static void DrawNoteScopeRadioButton(NoteScope scope, ref NoteScope currentScope)
+    {
+        var isSelected = currentScope == scope;
+        if (!ImGui.RadioButton($"{GetNoteScopeLabel(scope)}##noteScope{scope}", isSelected))
+        {
+            return;
+        }
+
+        Plugin.Configuration.NoteScopeMode = scope;
+        Plugin.Configuration.Save();
+        currentScope = scope;
+    }
+
+    private static void DrawNoteBackgroundStyleRadioButton(NoteBackgroundStyle style, ref NoteBackgroundStyle currentBackgroundStyle)
+    {
+        var isSelected = currentBackgroundStyle == style;
+        if (!ImGui.RadioButton($"{GetNoteBackgroundStyleLabel(style)}##noteBackgroundStyle{style}", isSelected))
+        {
+            return;
+        }
+
+        Plugin.Configuration.NoteBackgroundStyleMode = style;
+        Plugin.Configuration.Save();
+        currentBackgroundStyle = style;
+    }
+
+    private static void DrawNoteAppearanceSliders(NoteBackgroundStyle currentBackgroundStyle)
+    {
+        ImGui.Spacing();
+
+        if (currentBackgroundStyle == NoteBackgroundStyle.Frosted)
+        {
+            var frostedStrengthPercent = (int)Math.Round(Math.Clamp(Plugin.Configuration.NoteFrostedStrength, 0f, 1f) * 100f);
+            ImGui.SetNextItemWidth(-1f);
+            if (ImGui.SliderInt(
+                    $"{Plugin.Localization.Localize("Note Frosted Strength")}##noteFrostedStrength",
+                    ref frostedStrengthPercent,
+                    0,
+                    100,
+                    "%d%%"))
+            {
+                Plugin.Configuration.NoteFrostedStrength = Math.Clamp(frostedStrengthPercent / 100f, 0f, 1f);
+                Plugin.Configuration.Save();
+            }
+
+            ImGui.TextDisabled(Plugin.Localization.Localize("Note Frosted Strength Hint"));
+            ImGui.Spacing();
+        }
+
+        var opacity = currentBackgroundStyle == NoteBackgroundStyle.Transparent
+            ? Plugin.Configuration.NoteTransparentWindowOpacity
+            : Plugin.Configuration.NoteFrostedWindowOpacity;
+        var opacityPercent = (int)Math.Round(Math.Clamp(opacity, 0.05f, 1.0f) * 100f);
+        ImGui.SetNextItemWidth(-1f);
+        if (ImGui.SliderInt(
+                $"{Plugin.Localization.Localize("Note Window Opacity")}##noteWindowOpacity",
+                ref opacityPercent,
+                5,
+                100,
+                "%d%%"))
+        {
+            var newOpacity = Math.Clamp(opacityPercent / 100f, 0.05f, 1.0f);
+            if (currentBackgroundStyle == NoteBackgroundStyle.Transparent)
+            {
+                Plugin.Configuration.NoteTransparentWindowOpacity = newOpacity;
+            }
+            else
+            {
+                Plugin.Configuration.NoteFrostedWindowOpacity = newOpacity;
+            }
+
+            Plugin.Configuration.Save();
+        }
+
+        ImGui.TextDisabled(Plugin.Localization.Localize("Note Window Opacity Hint"));
     }
 
     private void DrawDailyTaskMonitorSection()
@@ -670,6 +788,46 @@ public sealed class ConfigWindow : Window, IDisposable
             FloatingWindowStyle.Classic => "Classic Style Description",
             FloatingWindowStyle.Minimal => "Minimal Style Description",
             _ => "Unknown Style Description"
+        });
+    }
+
+    private static string GetNoteScopeLabel(NoteScope scope)
+    {
+        return scope switch
+        {
+            NoteScope.Public => Plugin.Localization.Localize("Public Note"),
+            NoteScope.Character => Plugin.Localization.Localize("Character Note"),
+            _ => scope.ToString()
+        };
+    }
+
+    private static string GetNoteScopeDescription(NoteScope scope)
+    {
+        return Plugin.Localization.Localize(scope switch
+        {
+            NoteScope.Public => "Public Note Description",
+            NoteScope.Character => "Character Note Description",
+            _ => "Unknown Note Type Description"
+        });
+    }
+
+    private static string GetNoteBackgroundStyleLabel(NoteBackgroundStyle style)
+    {
+        return style switch
+        {
+            NoteBackgroundStyle.Frosted => Plugin.Localization.Localize("Frosted Background"),
+            NoteBackgroundStyle.Transparent => Plugin.Localization.Localize("Transparent Background"),
+            _ => style.ToString()
+        };
+    }
+
+    private static string GetNoteBackgroundStyleDescription(NoteBackgroundStyle style)
+    {
+        return Plugin.Localization.Localize(style switch
+        {
+            NoteBackgroundStyle.Frosted => "Frosted Background Description",
+            NoteBackgroundStyle.Transparent => "Transparent Background Description",
+            _ => "Unknown Note Background Description"
         });
     }
 

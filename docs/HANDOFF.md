@@ -1,12 +1,12 @@
 ﻿# 日随伴侣交接文档
 
-> 最后更新：2026-05-18
+> 最后更新：2026-05-21
 > 项目路径：`E:\git\RouletteRecorder.Dalamud`
 > 当前分支：`master`
 > 插件名称：`日随伴侣`
 > 内部名：`日随伴侣卫月版`
-> 当前版本：`1.0.2.0`
-> 当前发布页：`https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.2.0`
+> 当前版本：`1.0.3.0`
+> 当前发布页：`https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.3.0`
 
 ## 1. 接手先看
 
@@ -54,6 +54,7 @@ https://dalamud.dev/api/
 - 支持悬浮窗锁定、穿透、透明度、显示项开关。
 - 支持当前时间显示。
 - 支持今日导随次数和导随总次数显示。
+- 支持个人便签悬浮窗，可在公共便签和角色便签之间切换，内容变化自动保存，并支持 D3D11 真实磨砂背景 / 透明背景；磨砂强度和窗口透明度可调。
 - 设置窗口底部可查看“订阅任务记录”和“历史任务记录”。
 - 支持 CSV 导出。
 - 支持 DungeonLogger 上报配置。
@@ -76,7 +77,48 @@ C:\Users\Administrator\AppData\Roaming\XIVLauncherCN\addon\Hooks\dev\
 
 当前本地构建目标为 `.NET 10`。
 
-### 3.2 常用构建命令
+### 3.2 个人便签 D3D11 磨砂背景依赖
+
+本轮新增个人便签真实磨砂背景，方案参考自：
+
+```text
+E:\git\ARH
+```
+
+当前实现已从最初移植的 TerraFX 版本改为 Vortice 版本，目的为保留 D3D11 真实磨砂效果，同时显著降低发布包体积。
+
+核心实现依赖：
+
+```xml
+<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+<PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
+<PackageReference Include="Vortice.DXGI" Version="3.8.3" />
+```
+
+实际发布包还会带上 Vortice 的传递依赖：
+
+```text
+Vortice.DirectX.dll
+Vortice.Mathematics.dll
+SharpGen.Runtime.dll
+SharpGen.Runtime.COM.dll
+```
+
+以及嵌入式计算着色器：
+
+```text
+RouletteRecorder.Dalamud/Shaders/AlphaFix.cso
+RouletteRecorder.Dalamud/Shaders/HBlur.cso
+RouletteRecorder.Dalamud/Shaders/VBlur.cso
+```
+
+注意：
+
+- 这些 `.cso` 文件是嵌入资源，不会以独立文件出现在发布 zip 中。
+- 不再依赖 `TerraFX.Interop.Windows`；如果输出目录残留旧的 `TerraFX.Interop.Windows.dll`，它会被 packager 误打进 zip，需要手动删除后重新构建。
+- 如果后续移除真实磨砂背景，需要同步移除 `AllowUnsafeBlocks`、Vortice 相关依赖、`Helpers/CleanBackgroundManager.cs` 和 `Shaders/*.cso`。
+
+### 3.3 常用构建命令
 
 Debug / 默认构建：
 
@@ -102,6 +144,12 @@ output/
 output/RouletteRecorder.Dalamud.dll
 output/RouletteRecorder.Dalamud.json
 output/RouletteRecorder.Dalamud/latest.zip
+output/Vortice.Direct3D11.dll
+output/Vortice.DXGI.dll
+output/Vortice.DirectX.dll
+output/Vortice.Mathematics.dll
+output/SharpGen.Runtime.dll
+output/SharpGen.Runtime.COM.dll
 ```
 
 注意：发布时使用的是：
@@ -127,10 +175,10 @@ RouletteRecorder.Dalamud/RouletteRecorder.Dalamud.csproj
 当前版本字段：
 
 ```xml
-<Version>1.0.2.0</Version>
-<AssemblyVersion>1.0.2.0</AssemblyVersion>
-<FileVersion>1.0.2.0</FileVersion>
-<InformationalVersion>1.0.2.0</InformationalVersion>
+<Version>1.0.3.0</Version>
+<AssemblyVersion>1.0.3.0</AssemblyVersion>
+<FileVersion>1.0.3.0</FileVersion>
+<InformationalVersion>1.0.3.0</InformationalVersion>
 ```
 
 仓库清单：
@@ -145,7 +193,7 @@ repo.json
 {
   "Name": "日随伴侣",
   "InternalName": "日随伴侣卫月版",
-  "AssemblyVersion": "1.0.2.0",
+  "AssemblyVersion": "1.0.3.0",
   "DalamudApiLevel": 15
 }
 ```
@@ -635,6 +683,102 @@ ClickthroughFloatingWindow
 | 关 | 开 | 可移动、可缩放、穿透 |
 | 开 | 开 | 不可移动、不可缩放、穿透 |
 
+### 8.4 个人便签悬浮窗
+
+核心文件：
+
+```text
+RouletteRecorder.Dalamud/Windows/NoteWindow.cs
+RouletteRecorder.Dalamud/Helpers/CleanBackgroundManager.cs
+RouletteRecorder.Dalamud/Shaders/*.cso
+```
+
+入口：
+
+- 设置窗口里的“个人便签”区域。
+- 命令 `/prr bq`，作用是开关便签悬浮窗；开着时关闭，关着时打开。
+
+便签类型：
+
+| 类型 | 保存位置 | 可见范围 |
+| --- | --- | --- |
+| 公共便签 | `Configuration.PublicNoteContent` | 所有角色可见 |
+| 角色便签 | `Configuration.CharacterNoteContents` | 仅当前角色 / 当前服务器可见 |
+
+角色便签 key：
+
+```csharp
+$"{worldName}/{playerName}"
+```
+
+注意：
+
+- 未登录时无法确定角色名和服务器名，因此选择“角色便签”会显示提示，不允许编辑。
+- 便签内容使用 `ImGui.InputTextMultiline`，内容变化时立即写入配置并 `Save()`。
+- 多行输入框有边框线，最小高度为 1 行文本高度。
+- 便签窗口本身不设置最小窗口尺寸：
+
+  ```csharp
+  MinimumSize = Vector2.Zero
+  ```
+
+- 便签窗口保留原生标题栏、关闭按钮和折叠按钮。标题栏显示：
+
+  ```text
+  公共便签
+  角色便签
+  ```
+
+设置窗口 UI：
+
+- “公共便签 / 角色便签”必须使用单选框，不使用下拉菜单。
+- “磨砂背景 / 透明背景”必须使用单选框，不使用下拉菜单。
+- “磨砂背景”显示：
+  - 便签磨砂强度。
+  - 便签窗口透明度。
+- “透明背景”显示：
+  - 便签窗口透明度。
+
+背景样式：
+
+| 样式 | 实现 |
+| --- | --- |
+| 磨砂背景 | 使用 `CleanBackgroundManager` 抓取 D3D11 back buffer，经 `AlphaFix/HBlur/VBlur` 计算着色器处理后，通过 `ImGui.GetBackgroundDrawList()` 绘制到便签窗口背后 |
+| 透明背景 | 不跑 D3D11 模糊，只使用普通窗口透明度和透明标题栏 / 输入框背景 |
+
+磨砂背景实现细节：
+
+- 便签窗口设置：
+
+  ```csharp
+  Flags = ImGuiWindowFlags.NoBackground;
+  AllowBackgroundBlur = true;
+  ```
+
+- 绘制时调用：
+
+  ```csharp
+  backgroundManager?.DrawBackground(GetCurrentNoteWindowOpacity());
+  ```
+
+- 磨砂强度会影响 shader 模糊迭代次数：
+
+  ```csharp
+  backgroundManager.BlurIterations = 1 + (int)Math.Round(GetFrostedStrength() * 5f);
+  ```
+
+- `CleanBackgroundManager` 内部会 clamp 到 `1 - 8` 次。
+- `CleanBackgroundManager` 参考自 `E:\git\ARH\AutoRaidHelper\Helpers\CleanBackgroundManager.cs`，但命名空间、资源名、绘制层级已适配本项目。
+- 本项目版本使用 `ImGui.GetBackgroundDrawList()`，不是 ARH 原本的 `ImGui.GetWindowDrawList()`，避免模糊贴图盖住便签原生标题栏、关闭按钮和折叠按钮。
+
+透明背景实现细节：
+
+- `NoteTransparentWindowOpacity` 不只控制窗口 `BgAlpha`，还同步控制：
+  - 标题栏背景透明度。
+  - 多行输入框背景透明度。
+  - 多行输入框 child 背景透明度。
+- 这是用户明确要求：“透明背景的滑块同时可以控制标题栏和多行的背景透明度”。
+
 ## 9. 当前默认设置
 
 默认值来自开发者当前配置，写在：
@@ -668,6 +812,14 @@ public bool MinimalShowTaskTime { get; set; } = false;
 public bool MinimalShowTodayMentorRouletteCount { get; set; } = true;
 public bool MinimalShowMentorRouletteTotalCount { get; set; } = false;
 public bool ShowCurrentTime { get; set; } = true;
+public bool EnableNoteWindow { get; set; } = false;
+public NoteScope NoteScopeMode { get; set; } = NoteScope.Public;
+public NoteBackgroundStyle NoteBackgroundStyleMode { get; set; } = NoteBackgroundStyle.Frosted;
+public float NoteFrostedStrength { get; set; } = 1.0f;
+public float NoteFrostedWindowOpacity { get; set; } = 0.45f;
+public float NoteTransparentWindowOpacity { get; set; } = 0.12f;
+public string PublicNoteContent { get; set; } = string.Empty;
+public Dictionary<string, string> CharacterNoteContents { get; set; } = [];
 ```
 
 注意：
@@ -693,6 +845,12 @@ RouletteRecorder.Dalamud/Windows/ConfigWindow.cs
   - 外观。
   - 窗口行为。
   - 显示内容。
+- 个人便签。
+  - 便签窗口开关。
+  - 公共便签 / 角色便签。
+  - 磨砂背景 / 透明背景。
+  - 磨砂强度。
+  - 窗口透明度。
 - 每日、每周任务监控。
   - 每日任务。
   - 蛮族任务完成次数阈值。
@@ -740,6 +898,12 @@ ImGuiTableFlags.ScrollX | ImGuiTableFlags.ScrollY
 
 作用：打开设置窗口。
 
+```text
+/prr bq
+```
+
+作用：打开或关闭个人便签悬浮窗。
+
 当前没有单独的 `/prr on` 或 `/prr off`。如果后续用户需要，可以在 `Plugin.OnCommand` 中加。
 
 ## 12. 关键代码文件
@@ -752,7 +916,10 @@ ImGuiTableFlags.ScrollX | ImGuiTableFlags.ScrollY
 | `RouletteRecorder.Dalamud/DAO/TaskHistoryRoulette.cs` | `task_history.json` 单条任务记录模型 |
 | `RouletteRecorder.Dalamud/Utils/Database.cs` | 数据加载保存、统计、每日/每周任务监控、完成状态判断、历史任务文件自动重载 |
 | `RouletteRecorder.Dalamud/Windows/MainWindow.cs` | 主悬浮窗、Tips、当前时间、历史任务 |
+| `RouletteRecorder.Dalamud/Windows/NoteWindow.cs` | 个人便签悬浮窗 |
 | `RouletteRecorder.Dalamud/Windows/ConfigWindow.cs` | 设置窗口 |
+| `RouletteRecorder.Dalamud/Helpers/CleanBackgroundManager.cs` | 个人便签 D3D11 真实磨砂背景，移植自 `E:\git\ARH` |
+| `RouletteRecorder.Dalamud/Shaders/*.cso` | D3D11 背景模糊计算着色器资源 |
 | `RouletteRecorder.Dalamud/Resources/zh_CN.json` | 中文本地化 |
 | `RouletteRecorder.Dalamud/Build/LocalizeOutputManifest.ps1` | manifest 本地化和发布包重打包 |
 | `.github/workflows/build.yml` | GitHub Actions 构建/发布流程 |
@@ -800,9 +967,16 @@ CsvHelper.dll
 RouletteRecorder.Dalamud.deps.json
 RouletteRecorder.Dalamud.dll
 RouletteRecorder.Dalamud.json
+SharpGen.Runtime.COM.dll
+SharpGen.Runtime.dll
+Vortice.Direct3D11.dll
+Vortice.DirectX.dll
+Vortice.DXGI.dll
+Vortice.Mathematics.dll
 ```
 
 不应该包含嵌套的旧 `latest.zip`。
+不应该包含残留的 `TerraFX.Interop.Windows.dll`。
 
 检查 zip 内 manifest：
 
@@ -830,6 +1004,14 @@ tar -xOf output\RouletteRecorder.Dalamud\latest.zip RouletteRecorder.Dalamud.jso
    - `IObjectTable.LocalPlayer`
    - `IPlayerState`
    - `InstanceContent.Instance()->IsRouletteComplete`
+13. 个人便签“磨砂背景”不是单纯 ImGui 半透明样式，而是 D3D11 真实模糊背景：
+   - 依赖 `Vortice.Direct3D11` / `Vortice.DXGI` 以及其传递依赖 `SharpGen.Runtime*`、`Vortice.DirectX`、`Vortice.Mathematics`。
+   - 依赖 `unsafe`。
+   - 依赖嵌入式 `.cso` shader 资源。
+   - 如果用户反馈磨砂无效，优先查看 Dalamud 日志里 `CleanBackgroundManager` 是否获取到 DirectX11 设备、shader 是否加载成功、SRV/UAV 是否创建成功。
+   - 磨砂背景使用 `GetBackgroundDrawList()` 绘制在便签窗口背后，便签窗口自身必须保持 `ImGuiWindowFlags.NoBackground`，否则会被普通窗口背景盖住。
+   - 当前发布包不应包含 `TerraFX.Interop.Windows.dll`；如出现，通常是 `output` 目录残留旧文件，需要删除后重新构建。
+14. 透明背景滑块必须同时影响窗口主体、标题栏和多行输入框背景透明度，不要只改 `BgAlpha`。
 
 ## 15. 2026-05-18 收工记录
 
@@ -870,11 +1052,181 @@ dotnet build
 0 个错误
 ```
 
-## 16. 下次建议
+## 16. 2026-05-20 收工记录
+
+本轮主要变更：
+
+- 新增个人便签悬浮窗：
+  - 新文件 `RouletteRecorder.Dalamud/Windows/NoteWindow.cs`。
+  - 命令 `/prr bq` 用于打开或关闭便签窗口。
+  - 支持公共便签和角色便签。
+  - 便签内容变化时自动保存。
+  - 便签窗口保留原生标题栏、关闭按钮和折叠按钮。
+  - 便签窗口不限制最小窗口尺寸。
+  - 多行输入框最小高度为 1 行，带边框线。
+- 设置窗口新增“个人便签”区域：
+  - “公共便签 / 角色便签”使用单选框。
+  - “磨砂背景 / 透明背景”使用单选框。
+  - 支持便签磨砂强度滑块。
+  - 支持便签窗口透明度滑块。
+- 公共便签 / 角色便签保存策略：
+  - 公共便签保存到 `Configuration.PublicNoteContent`。
+  - 角色便签保存到 `Configuration.CharacterNoteContents`。
+  - 角色便签 key 为 `服务器名/角色名`。
+- 透明背景行为：
+  - 透明度滑块同时影响窗口主体、标题栏、多行输入框背景。
+  - 这是用户明确要求，不要回退成只影响 `BgAlpha`。
+- 磨砂背景行为：
+  - 先尝试过 `AllowBackgroundBlur` 和 ImGui 半透明模拟，但用户反馈“没有磨砂感觉”。
+  - 后参考 `E:\git\ARH`，移植 D3D11 真实磨砂背景方案。
+  - 新增 `RouletteRecorder.Dalamud/Helpers/CleanBackgroundManager.cs`。
+  - 新增 `RouletteRecorder.Dalamud/Shaders/AlphaFix.cso`、`HBlur.cso`、`VBlur.cso`。
+  - 最初使用 `TerraFX.Interop.Windows` 版本，构建包约 8.64 MB，主要体积来自 `TerraFX.Interop.Windows.dll`。
+  - 后续改为 `Vortice.Direct3D11` / `Vortice.DXGI` 版本，保留真实 D3D11 磨砂，发布包降到约 0.595 MB。
+  - `.csproj` 开启 `<AllowUnsafeBlocks>true</AllowUnsafeBlocks>`。
+  - 磨砂强度会影响 blur shader 迭代次数。
+  - 如 `output` 目录残留旧的 `TerraFX.Interop.Windows.dll`，packager 可能会误打包；已手动删除残留后重新构建。
+- 文档更新：
+  - `README.md` 增加个人便签和 `/prr bq` 说明。
+  - `docs/HANDOFF.md` 更新本轮交接内容。
+
+本轮修改 / 新增文件：
+
+```text
+README.md
+docs/HANDOFF.md
+RouletteRecorder.Dalamud/Configuration.cs
+RouletteRecorder.Dalamud/Plugin.cs
+RouletteRecorder.Dalamud/Resources/zh_CN.json
+RouletteRecorder.Dalamud/RouletteRecorder.Dalamud.csproj
+RouletteRecorder.Dalamud/Windows/ConfigWindow.cs
+RouletteRecorder.Dalamud/Windows/NoteWindow.cs
+RouletteRecorder.Dalamud/Helpers/CleanBackgroundManager.cs
+RouletteRecorder.Dalamud/Shaders/AlphaFix.cso
+RouletteRecorder.Dalamud/Shaders/HBlur.cso
+RouletteRecorder.Dalamud/Shaders/VBlur.cso
+RouletteRecorder.Dalamud/packages.lock.json
+```
+
+构建验证：
+
+```powershell
+dotnet build
+```
+
+结果：
+
+```text
+已成功生成。
+0 个警告
+0 个错误
+```
+
+当前构建包内容检查：
+
+```powershell
+tar -tf output\RouletteRecorder.Dalamud\latest.zip
+```
+
+结果包含：
+
+```text
+CsvHelper.dll
+RouletteRecorder.Dalamud.deps.json
+RouletteRecorder.Dalamud.dll
+RouletteRecorder.Dalamud.json
+SharpGen.Runtime.COM.dll
+SharpGen.Runtime.dll
+Vortice.Direct3D11.dll
+Vortice.DirectX.dll
+Vortice.DXGI.dll
+Vortice.Mathematics.dll
+```
+
+注意：
+
+- `.cso` shader 是嵌入资源，不会单独出现在 zip 中。
+- 当前 `latest.zip` 大小约 `623,459` 字节（约 `0.595 MB`）。
+- 当前发布包不应再出现 `TerraFX.Interop.Windows.dll`。
+- 本轮作为 `v1.0.3.0` 发布。
+
+## 17. 2026-05-21 发布记录
+
+本轮发布版本：
+
+```text
+1.0.3.0
+```
+
+主要发布内容：
+
+- 发布个人便签悬浮窗功能。
+- 支持 `/prr bq` 打开或关闭便签窗口。
+- 支持公共便签 / 角色便签，两者通过设置窗口单选框切换。
+- 支持便签内容变化时自动保存。
+- 支持磨砂背景 / 透明背景，两者通过设置窗口单选框切换。
+- 磨砂背景使用 D3D11 back buffer + 计算着色器实现真实模糊效果。
+- 透明背景滑块同时影响窗口主体、标题栏和多行输入框背景透明度。
+- 多行输入框带边框，最小高度为 1 行。
+- 便签窗口保留原生标题栏、关闭按钮和折叠按钮，不限制最小窗口尺寸。
+- 真磨砂实现已从 TerraFX 版本切换到 Vortice 版本，避免发布包被 `TerraFX.Interop.Windows.dll` 放大到约 9 MB。
+
+发布前验证：
+
+```powershell
+dotnet build -c Release
+```
+
+结果要求：
+
+```text
+已成功生成。
+0 个警告
+0 个错误
+```
+
+发布包：
+
+```text
+output/RouletteRecorder.Dalamud/latest.zip
+```
+
+发布包预期内容：
+
+```text
+CsvHelper.dll
+RouletteRecorder.Dalamud.deps.json
+RouletteRecorder.Dalamud.dll
+RouletteRecorder.Dalamud.json
+SharpGen.Runtime.COM.dll
+SharpGen.Runtime.dll
+Vortice.Direct3D11.dll
+Vortice.DirectX.dll
+Vortice.DXGI.dll
+Vortice.Mathematics.dll
+```
+
+发布包不应包含：
+
+```text
+TerraFX.Interop.Windows.dll
+latest.zip
+```
+
+对应 Release：
+
+```text
+https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.3.0
+```
+
+## 18. 下次建议
 
 - 如用户需要，增加 `/prr on` 和 `/prr off`。
 - 后续可把 `MinimalShow...` 迁移为通用 `Show...`，并做配置迁移。
 - 可增加“一键恢复默认设置”。
 - 可增加历史记录清空、备份或导入功能。
 - 可增加 Tips 中的刷新时间开关，而不是固定显示。
+- 进游戏实测个人便签真实磨砂背景：
+  - 若不生效，优先看 Dalamud 日志中 `CleanBackgroundManager` 的 D3D11 设备、shader、SRV/UAV 初始化情况。
+  - 若用户希望标题栏也完全参与自定义磨砂，可考虑像 ARH 一样改成 `NoTitleBar` 并手绘标题栏、关闭按钮和折叠按钮；当前实现保留原生标题栏以满足“有标题栏 / 有折叠按钮”的需求。
 

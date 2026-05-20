@@ -41,9 +41,16 @@
    - 可通过 `悬浮窗透明度` 调整悬浮窗背景透明度。
    - 可通过 `锁定悬浮窗` 旁边的 `开启悬浮窗` 选项显示或隐藏主悬浮窗。
    - `悬浮窗显示项` 同时影响经典样式和极简样式：`当前任务` 控制任务类型和任务名称；`任务时间` 控制任务时长、开始时间和是否完成；`今日导随任务次数` 与 `导随任务总次数` 分别控制对应计数显示。极简样式中的今日导随任务次数会以黄色强调显示。
-6. 展开 `Subscribed Roulette Types`。
-7. 选择需要订阅并记录的随机任务类型。
-8. 之后正常排本即可，插件会自动记录符合条件的随机任务。
+6. 如需使用个人便签，展开 `个人便签`：
+   - 可通过 `/prr bq` 或 `开启便签窗口` 打开/关闭便签悬浮窗。
+   - `公共便签` 对所有角色可见。
+   - `角色便签` 按当前角色名和服务器分别保存，只有对应角色可见。
+   - 便签内容会在多行输入框内容变化时自动保存。
+   - 便签背景可选择 `磨砂背景` 或 `透明背景`。
+   - `磨砂背景` 可调整磨砂强度和窗口透明度；`透明背景` 可单独调整窗口透明度。
+7. 展开 `Subscribed Roulette Types`。
+8. 选择需要订阅并记录的随机任务类型。
+9. 之后正常排本即可，插件会自动记录符合条件的随机任务。
 
 > 当前角色导随任务次数会从成就进度中读取，使用的是指导者随机任务 2000 次成就进度。首次打开或手动刷新时可能需要等待游戏返回成就数据。
 > 今日导随任务次数会从本插件历史记录中统计，统计范围为今天已记录且已完成的指导者随机任务。
@@ -127,6 +134,12 @@ output/RouletteRecorder.Dalamud.dll
 
 打开日随伴侣设置面板。
 
+```text
+/prr bq
+```
+
+打开或关闭个人便签悬浮窗。
+
 ---
 
 ## English
@@ -170,9 +183,16 @@ Daily Roulette Companion is the Dalamud plugin version of [RouletteRecorder](htt
    - Use `悬浮窗透明度` (`Floating Window Opacity`) to adjust the floating window background opacity.
    - Use `开启悬浮窗` (`Enable Floating Window`) next to `锁定悬浮窗` (`Lock Floating Window`) to show or hide the main floating window.
    - `悬浮窗显示项` (`Floating Window Display Items`) affects both Classic Style and Minimal Style: `当前任务` (`Current Task`) controls the task type and duty name; `任务时间` (`Task Time`) controls task duration, start time, and completed status; `今日导随任务次数` (`Today Mentor Roulette Count`) and `导随任务总次数` (`Mentor Roulette Total Count`) control their corresponding counters. In Minimal Style, today's mentor roulette count is highlighted in yellow.
-6. Expand `Subscribed Roulette Types`.
-7. Select the roulette types you want to subscribe to and record.
-8. Queue normally; the plugin will automatically record matching roulettes.
+6. To use personal notes, expand `个人便签` (`Personal Note`):
+   - Use `/prr bq` or `开启便签窗口` (`Enable Note Window`) to open or close the note floating window.
+   - `公共便签` (`Public Note`) is visible to all characters.
+   - `角色便签` (`Character Note`) is saved by current character name and world, and is only visible to that character.
+   - Note content is saved automatically when the multiline input content changes.
+   - The note background can be set to `磨砂背景` (`Frosted Background`) or `透明背景` (`Transparent Background`).
+   - `磨砂背景` (`Frosted Background`) supports frosted strength and window opacity adjustment; `透明背景` (`Transparent Background`) has its own opacity adjustment.
+7. Expand `Subscribed Roulette Types`.
+8. Select the roulette types you want to subscribe to and record.
+9. Queue normally; the plugin will automatically record matching roulettes.
 
 > The current character's mentor roulette count is read from achievement progress, using the 2,000 mentor roulettes achievement. When opening the window for the first time or refreshing manually, it may take a moment for the game to return achievement data.
 > Today's mentor roulette count is calculated from this plugin's history records, counting completed mentor roulettes recorded today.
@@ -255,3 +275,9 @@ Open or close the 日随伴侣 floating window.
 ```
 
 Open the 日随伴侣 settings panel.
+
+```text
+/prr bq
+```
+
+Open or close the personal note floating window.
