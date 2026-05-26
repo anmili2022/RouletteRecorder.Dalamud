@@ -1,11 +1,11 @@
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Windowing;
-using RouletteRecorder.Dalamud.Helpers;
+using RouletteBuddy.Helpers;
 using System;
 using System.Numerics;
 
-namespace RouletteRecorder.Dalamud.Windows;
+namespace RouletteBuddy.Windows;
 
 public sealed class NoteWindow : Window, IDisposable
 {

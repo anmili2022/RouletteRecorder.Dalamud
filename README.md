@@ -81,7 +81,7 @@ dotnet build
 构建输出目录已改为仓库根目录下的 `output`：
 
 ```text
-output/RouletteRecorder.Dalamud.dll
+output/RouletteBuddy.dll
 ```
 
 如果使用 `Release` 配置：
@@ -93,7 +93,7 @@ dotnet build -c Release
 生成的插件文件同样会输出到：
 
 ```text
-output/RouletteRecorder.Dalamud.dll
+output/RouletteBuddy.dll
 ```
 
 #### 在游戏中加载开发插件
@@ -104,13 +104,13 @@ output/RouletteRecorder.Dalamud.dll
 4. 将以下插件 DLL 的完整路径添加到 Dev Plugin Locations：
 
    ```text
-   <仓库路径>/output/RouletteRecorder.Dalamud.dll
+   <仓库路径>/output/RouletteBuddy.dll
    ```
 
    例如：
 
    ```text
-   E:/git/RouletteRecorder.Dalamud/output/RouletteRecorder.Dalamud.dll
+   E:/git/RouletteBuddy/output/RouletteBuddy.dll
    ```
 
 5. 在聊天框输入 `/xlplugins`，或在 Dalamud Console 中输入 `xlplugins`，打开插件安装器。
@@ -223,7 +223,7 @@ dotnet build
 The build output directory has been changed to `output` in the repository root:
 
 ```text
-output/RouletteRecorder.Dalamud.dll
+output/RouletteBuddy.dll
 ```
 
 For a `Release` build:
@@ -235,7 +235,7 @@ dotnet build -c Release
 The generated plugin file will also be written to:
 
 ```text
-output/RouletteRecorder.Dalamud.dll
+output/RouletteBuddy.dll
 ```
 
 #### Loading the development plugin in-game
@@ -246,13 +246,13 @@ output/RouletteRecorder.Dalamud.dll
 4. Add the full path of the following plugin DLL to Dev Plugin Locations:
 
    ```text
-   <repository path>/output/RouletteRecorder.Dalamud.dll
+   <repository path>/output/RouletteBuddy.dll
    ```
 
    Example:
 
    ```text
-   E:/git/RouletteRecorder.Dalamud/output/RouletteRecorder.Dalamud.dll
+   E:/git/RouletteBuddy/output/RouletteBuddy.dll
    ```
 
 5. Type `/xlplugins` in chat, or `xlplugins` in the Dalamud Console, to open the Plugin Installer.

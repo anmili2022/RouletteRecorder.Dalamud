@@ -8,7 +8,7 @@ using SharpGen.Runtime;
 using Vortice.Direct3D11;
 using Vortice.DXGI;
 
-namespace RouletteRecorder.Dalamud.Helpers;
+namespace RouletteBuddy.Helpers;
 
 public sealed unsafe class CleanBackgroundManager(IPluginLog log) : IDisposable
 {
@@ -152,9 +152,9 @@ public sealed unsafe class CleanBackgroundManager(IPluginLog log) : IDisposable
     private void LoadShaders()
     {
         log.Information("开始加载便签磨砂背景着色器...");
-        alphaFixShader = LoadShaderFromResource("RouletteRecorder.Dalamud.Shaders.AlphaFix.cso");
-        blurHorizontalShader = LoadShaderFromResource("RouletteRecorder.Dalamud.Shaders.HBlur.cso");
-        blurVerticalShader = LoadShaderFromResource("RouletteRecorder.Dalamud.Shaders.VBlur.cso");
+        alphaFixShader = LoadShaderFromResource("RouletteBuddy.Shaders.AlphaFix.cso");
+        blurHorizontalShader = LoadShaderFromResource("RouletteBuddy.Shaders.HBlur.cso");
+        blurVerticalShader = LoadShaderFromResource("RouletteBuddy.Shaders.VBlur.cso");
 
         if (alphaFixShader != null)
         {

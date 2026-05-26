@@ -11,6 +11,7 @@
         <Description>帮助你记录每日随机任务、导出报告，并实时同步到 DungeonLogger。&#x0A;&#x0A;Help you to record your daily roulettes, export reports, and sync with DungeonLogger in real time.</Description>
         <Tags>随机任务;指导者;roulette;mentor;plugin</Tags>
         <PackageProjectUrl>https://github.com/anmili2022/RouletteRecorder.Dalamud</PackageProjectUrl>
+        <AssemblyName>RouletteBuddy</AssemblyName>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <IsPackable>false</IsPackable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

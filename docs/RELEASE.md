@@ -18,7 +18,7 @@ pwd
 应为：
 
 ```text
-E:\git\RouletteRecorder.Dalamud
+E:\git\RouletteBuddy
 ```
 
 确认当前分支：
@@ -73,7 +73,7 @@ $newVersion = "1.0.5.0"
 版本号主要在：
 
 ```text
-RouletteRecorder.Dalamud/RouletteRecorder.Dalamud.csproj
+RouletteBuddy/RouletteBuddy.csproj
 ```
 
 可手动修改这四项：
@@ -90,7 +90,7 @@ RouletteRecorder.Dalamud/RouletteRecorder.Dalamud.csproj
 ```powershell
 $oldVersion = "1.0.5.0"
 $newVersion = "1.0.5.0"
-(Get-Content -Encoding UTF8 RouletteRecorder.Dalamud\RouletteRecorder.Dalamud.csproj) -replace [regex]::Escape($oldVersion), $newVersion | Set-Content -Encoding UTF8 RouletteRecorder.Dalamud\RouletteRecorder.Dalamud.csproj
+(Get-Content -Encoding UTF8 RouletteBuddy\RouletteBuddy.csproj) -replace [regex]::Escape($oldVersion), $newVersion | Set-Content -Encoding UTF8 RouletteBuddy\RouletteBuddy.csproj
 (Get-Content -Encoding UTF8 docs\HANDOFF.md) -replace [regex]::Escape($oldVersion), $newVersion | Set-Content -Encoding UTF8 docs\HANDOFF.md
 (Get-Content -Encoding UTF8 docs\RELEASE.md) -replace [regex]::Escape($oldVersion), $newVersion | Set-Content -Encoding UTF8 docs\RELEASE.md
 ```
@@ -116,7 +116,7 @@ Resolve-Path -LiteralPath output
 如果路径确实是仓库下的 `output`，再删除：
 
 ```powershell
-Remove-Item -LiteralPath "E:\git\RouletteRecorder.Dalamud\output" -Recurse -Force
+Remove-Item -LiteralPath "E:\git\RouletteBuddy\output" -Recurse -Force
 ```
 
 构建：
@@ -138,7 +138,7 @@ dotnet build -c Release
 查看输出清单：
 
 ```powershell
-Get-Content -Encoding UTF8 output\RouletteRecorder.Dalamud.json
+Get-Content -Encoding UTF8 output\RouletteBuddy.json
 ```
 
 确认这些字段正确：
@@ -153,16 +153,16 @@ Get-Content -Encoding UTF8 output\RouletteRecorder.Dalamud.json
 检查发布包内容：
 
 ```powershell
-tar -tf output\RouletteRecorder.Dalamud\latest.zip
+tar -tf output\RouletteBuddy\latest.zip
 ```
 
 正常应类似：
 
 ```text
 CsvHelper.dll
-RouletteRecorder.Dalamud.deps.json
-RouletteRecorder.Dalamud.dll
-RouletteRecorder.Dalamud.json
+RouletteBuddy.deps.json
+RouletteBuddy.dll
+RouletteBuddy.json
 ```
 
 不要出现嵌套的旧包：
@@ -174,7 +174,7 @@ latest.zip
 检查 zip 内 manifest：
 
 ```powershell
-tar -xOf output\RouletteRecorder.Dalamud\latest.zip RouletteRecorder.Dalamud.json
+tar -xOf output\RouletteBuddy\latest.zip RouletteBuddy.json
 ```
 
 也要确认：
@@ -262,13 +262,13 @@ git push origin v1.0.5.0
 推荐直接上传本地构建好的发布包：
 
 ```powershell
-gh release create v1.0.5.0 output\RouletteRecorder.Dalamud\latest.zip --title "日随伴侣 v1.0.5.0" --notes-file output\release_notes.md
+gh release create v1.0.5.0 output\RouletteBuddy\latest.zip --title "日随伴侣 v1.0.5.0" --notes-file output\release_notes.md
 ```
 
 如果 Release 已经存在，需要覆盖上传包：
 
 ```powershell
-gh release upload --clobber v1.0.5.0 output\RouletteRecorder.Dalamud\latest.zip
+gh release upload --clobber v1.0.5.0 output\RouletteBuddy\latest.zip
 ```
 
 查看发布结果：
@@ -340,7 +340,7 @@ v1.0.5.0
 理论上发布 GitHub Release 时，Actions 会：
 
 1. 构建 Release。
-2. 上传 `Release/RouletteRecorder.Dalamud/latest.zip` 到 Release。
+2. 上传 `Release/RouletteBuddy/latest.zip` 到 Release。
 3. 运行 `Make-Repo.ps1` 生成 `repo.json`。
 4. 提交并推送更新后的 `repo.json`。
 
@@ -349,7 +349,7 @@ v1.0.5.0
 ## 12. 常见坑
 
 1. 不要上传 `output/latest.zip`。
-2. 必须上传 `output/RouletteRecorder.Dalamud/latest.zip`。
+2. 必须上传 `output/RouletteBuddy/latest.zip`。
 3. zip 内不要包含旧的 `latest.zip`。
 4. zip 内 manifest 的 `InternalName` 必须是 `RouletteBuddy`。
 5. `LocalizeOutputManifest.ps1` 不要硬编码版本号。

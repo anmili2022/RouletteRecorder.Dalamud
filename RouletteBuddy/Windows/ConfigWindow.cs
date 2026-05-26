@@ -2,9 +2,9 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
-using RouletteRecorder.Dalamud.DAO;
-using RouletteRecorder.Dalamud.Network.DungeonLogger;
-using RouletteRecorder.Dalamud.Utils;
+using RouletteBuddy.DAO;
+using RouletteBuddy.Network.DungeonLogger;
+using RouletteBuddy.Utils;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -13,7 +13,7 @@ using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
 
-namespace RouletteRecorder.Dalamud.Windows;
+namespace RouletteBuddy.Windows;
 
 public sealed class ConfigWindow : Window, IDisposable
 {

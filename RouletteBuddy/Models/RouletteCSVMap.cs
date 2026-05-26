@@ -1,7 +1,7 @@
 using CsvHelper.Configuration;
-using RouletteRecorder.Dalamud.DAO;
+using RouletteBuddy.DAO;
 
-namespace RouletteRecorder.Dalamud.Models
+namespace RouletteBuddy.Models
 {
     internal sealed class RouletteCsvMap : ClassMap<Roulette>
     {

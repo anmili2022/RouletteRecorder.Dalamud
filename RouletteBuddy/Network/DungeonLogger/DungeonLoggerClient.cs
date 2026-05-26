@@ -1,5 +1,5 @@
 using Newtonsoft.Json;
-using RouletteRecorder.Dalamud.Network.DungeonLogger.Structures;
+using RouletteBuddy.Network.DungeonLogger.Structures;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -10,7 +10,7 @@ using Dalamud.Plugin.Services;
 using System.Collections;
 using System.Linq;
 
-namespace RouletteRecorder.Dalamud.Network.DungeonLogger
+namespace RouletteBuddy.Network.DungeonLogger
 {
     public sealed class DungeonLoggerClient : IDisposable
     {

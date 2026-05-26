@@ -2,7 +2,7 @@ $ErrorActionPreference = 'SilentlyContinue'
 
 $output = New-Object Collections.Generic.List[object]
 
-$content = Get-Content "Release/RouletteRecorder.Dalamud.json" | ConvertFrom-Json
+$content = Get-Content "Release/RouletteBuddy.json" | ConvertFrom-Json
 
 $dlTemplate = "https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/download/v{0}/latest.zip"
 

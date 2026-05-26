@@ -1,12 +1,12 @@
 using Dalamud.Utility;
-using RouletteRecorder.Dalamud.Network.DungeonLogger;
-using RouletteRecorder.Dalamud.Utils;
+using RouletteBuddy.Network.DungeonLogger;
+using RouletteBuddy.Utils;
 using System;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace RouletteRecorder.Dalamud.DAO;
+namespace RouletteBuddy.DAO;
 
 public class Roulette(string? contentName, string? rouletteType, bool isCompleted = false)
 {

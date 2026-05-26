@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace RouletteRecorder.Dalamud;
+namespace RouletteBuddy;
 
 public enum FloatingWindowStyle
 {

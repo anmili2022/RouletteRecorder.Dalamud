@@ -1,8 +1,8 @@
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Windowing;
-using RouletteRecorder.Dalamud.DAO;
-using RouletteRecorder.Dalamud.Utils;
+using RouletteBuddy.DAO;
+using RouletteBuddy.Utils;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -10,7 +10,7 @@ using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
 
-namespace RouletteRecorder.Dalamud.Windows;
+namespace RouletteBuddy.Windows;
 
 public sealed class MainWindow : Window, IDisposable
 {

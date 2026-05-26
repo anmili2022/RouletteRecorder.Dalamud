@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 
-namespace RouletteRecorder.Dalamud
+namespace RouletteBuddy
 {
     public class Localization
     {
@@ -50,7 +50,7 @@ namespace RouletteRecorder.Dalamud
                 if (!Directory.Exists(locDirectory)) Directory.CreateDirectory(locDirectory);
 
                 var langFile = Path.Combine(locDirectory, "zh_CN.json");
-                using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("RouletteRecorder.Dalamud.Resources.zh_CN.json");
+                using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("RouletteBuddy.Resources.zh_CN.json");
                 if (stream != null)
                 {
                     using var streamReader = new StreamReader(stream);

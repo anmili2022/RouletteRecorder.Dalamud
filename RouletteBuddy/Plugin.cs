@@ -7,14 +7,14 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Lumina.Excel.Sheets;
-using RouletteRecorder.Dalamud.DAO;
-using RouletteRecorder.Dalamud.Utils;
-using RouletteRecorder.Dalamud.Windows;
+using RouletteBuddy.DAO;
+using RouletteBuddy.Utils;
+using RouletteBuddy.Windows;
 using System;
 using System.Linq;
 using ClientAchievement = FFXIVClientStructs.FFXIV.Client.Game.UI.Achievement;
 
-namespace RouletteRecorder.Dalamud;
+namespace RouletteBuddy;
 
 public sealed class Plugin : IDalamudPlugin
 {

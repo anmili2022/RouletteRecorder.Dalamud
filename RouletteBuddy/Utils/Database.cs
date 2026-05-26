@@ -4,8 +4,8 @@ using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.Sheets;
 using Newtonsoft.Json;
-using RouletteRecorder.Dalamud.DAO;
-using RouletteRecorder.Dalamud.Models;
+using RouletteBuddy.DAO;
+using RouletteBuddy.Models;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -21,7 +21,7 @@ using ClientInstanceContent = FFXIVClientStructs.FFXIV.Client.Game.UI.InstanceCo
 using ClientPlayerState = FFXIVClientStructs.FFXIV.Client.Game.UI.PlayerState;
 using ClientQuestManager = FFXIVClientStructs.FFXIV.Client.Game.QuestManager;
 
-namespace RouletteRecorder.Dalamud.Utils;
+namespace RouletteBuddy.Utils;
 
 public enum MonitorTaskCompletionState
 {

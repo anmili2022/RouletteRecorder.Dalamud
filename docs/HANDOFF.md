@@ -1,12 +1,12 @@
 ﻿# 日随伴侣交接文档
 
 > 最后更新：2026-05-24
-> 项目路径：`E:\git\RouletteRecorder.Dalamud`
+> 项目路径：`E:\git\RouletteBuddy`
 > 当前分支：`master`
 > 插件名称：`日随伴侣`
 > 内部名：`RouletteBuddy`
 > 当前版本：`1.0.5.0`
-> 当前发布页：`https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.5.0`
+> 当前发布页：\`https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.5.0\`
 
 ## 1. 接手先看
 
@@ -107,9 +107,9 @@ SharpGen.Runtime.COM.dll
 以及嵌入式计算着色器：
 
 ```text
-RouletteRecorder.Dalamud/Shaders/AlphaFix.cso
-RouletteRecorder.Dalamud/Shaders/HBlur.cso
-RouletteRecorder.Dalamud/Shaders/VBlur.cso
+RouletteBuddy/Shaders/AlphaFix.cso
+RouletteBuddy/Shaders/HBlur.cso
+RouletteBuddy/Shaders/VBlur.cso
 ```
 
 注意：
@@ -141,9 +141,9 @@ output/
 关键输出：
 
 ```text
-output/RouletteRecorder.Dalamud.dll
-output/RouletteRecorder.Dalamud.json
-output/RouletteRecorder.Dalamud/latest.zip
+output/RouletteBuddy.dll
+output/RouletteBuddy.json
+output/RouletteBuddy/latest.zip
 output/Vortice.Direct3D11.dll
 output/Vortice.DXGI.dll
 output/Vortice.DirectX.dll
@@ -155,7 +155,7 @@ output/SharpGen.Runtime.COM.dll
 注意：发布时使用的是：
 
 ```text
-output/RouletteRecorder.Dalamud/latest.zip
+output/RouletteBuddy/latest.zip
 ```
 
 不要误用旧的：
@@ -169,7 +169,7 @@ output/latest.zip
 项目版本在：
 
 ```text
-RouletteRecorder.Dalamud/RouletteRecorder.Dalamud.csproj
+RouletteBuddy/RouletteBuddy.csproj
 ```
 
 当前版本字段：
@@ -201,7 +201,7 @@ repo.json
 构建后处理脚本：
 
 ```text
-RouletteRecorder.Dalamud/Build/LocalizeOutputManifest.ps1
+RouletteBuddy/Build/LocalizeOutputManifest.ps1
 ```
 
 它负责：
@@ -209,7 +209,7 @@ RouletteRecorder.Dalamud/Build/LocalizeOutputManifest.ps1
 - 把输出 manifest 的 `Name` 固定为 `日随伴侣`。
 - 把输出 manifest 的 `InternalName` 固定为 `RouletteBuddy`。
 - 写入中英双语 `Description` / `Punchline` / `Tags`。
-- 重新打包 `output/RouletteRecorder.Dalamud/latest.zip`，保证 zip 内 manifest 也是中文内部名。
+- 重新打包 `output/RouletteBuddy/latest.zip`，保证 zip 内 manifest 也是中文内部名。
 - 不再硬编码 `AssemblyVersion`，版本以 `.csproj` 为准。
 
 ## 5. 数据文件
@@ -244,7 +244,7 @@ data.json
 对应模型：
 
 ```text
-RouletteRecorder.Dalamud/DAO/Roulette.cs
+RouletteBuddy/DAO/Roulette.cs
 ```
 
 ### 5.2 task_history.json
@@ -269,7 +269,7 @@ task_history.json
 对应模型：
 
 ```text
-RouletteRecorder.Dalamud/DAO/TaskHistoryRoulette.cs
+RouletteBuddy/DAO/TaskHistoryRoulette.cs
 ```
 
 `TaskHistoryRoulette` 相比 `Roulette` 多出：
@@ -294,9 +294,9 @@ Plugin.GetPlayerWorldName()
 核心文件：
 
 ```text
-RouletteRecorder.Dalamud/Utils/Database.cs
-RouletteRecorder.Dalamud/Windows/MainWindow.cs
-RouletteRecorder.Dalamud/Windows/ConfigWindow.cs
+RouletteBuddy/Utils/Database.cs
+RouletteBuddy/Windows/MainWindow.cs
+RouletteBuddy/Windows/ConfigWindow.cs
 ```
 
 ### 6.1 每日任务监控选项
@@ -628,7 +628,7 @@ Database.ReloadTaskHistoryIfChanged()
 核心文件：
 
 ```text
-RouletteRecorder.Dalamud/Windows/MainWindow.cs
+RouletteBuddy/Windows/MainWindow.cs
 ```
 
 ### 8.1 样式
@@ -697,9 +697,9 @@ ClickthroughFloatingWindow
 核心文件：
 
 ```text
-RouletteRecorder.Dalamud/Windows/NoteWindow.cs
-RouletteRecorder.Dalamud/Helpers/CleanBackgroundManager.cs
-RouletteRecorder.Dalamud/Shaders/*.cso
+RouletteBuddy/Windows/NoteWindow.cs
+RouletteBuddy/Helpers/CleanBackgroundManager.cs
+RouletteBuddy/Shaders/*.cso
 ```
 
 入口：
@@ -793,7 +793,7 @@ $"{worldName}/{playerName}"
 默认值来自开发者当前配置，写在：
 
 ```text
-RouletteRecorder.Dalamud/Configuration.cs
+RouletteBuddy/Configuration.cs
 ```
 
 当前默认值：
@@ -843,7 +843,7 @@ public Dictionary<string, string> CharacterNoteContents { get; set; } = [];
 核心文件：
 
 ```text
-RouletteRecorder.Dalamud/Windows/ConfigWindow.cs
+RouletteBuddy/Windows/ConfigWindow.cs
 ```
 
 当前结构：
@@ -919,18 +919,18 @@ ImGuiTableFlags.ScrollX | ImGuiTableFlags.ScrollY
 
 | 文件 | 说明 |
 | --- | --- |
-| `RouletteRecorder.Dalamud/Plugin.cs` | 插件入口、服务注入、事件注册、命令、任务弹出和完成处理 |
-| `RouletteRecorder.Dalamud/Configuration.cs` | 配置结构和默认值 |
-| `RouletteRecorder.Dalamud/DAO/Roulette.cs` | `data.json` 单条任务记录模型 |
-| `RouletteRecorder.Dalamud/DAO/TaskHistoryRoulette.cs` | `task_history.json` 单条任务记录模型 |
-| `RouletteRecorder.Dalamud/Utils/Database.cs` | 数据加载保存、统计、每日/每周任务监控、完成状态判断、历史任务文件自动重载 |
-| `RouletteRecorder.Dalamud/Windows/MainWindow.cs` | 主悬浮窗、Tips、当前时间、历史任务 |
-| `RouletteRecorder.Dalamud/Windows/NoteWindow.cs` | 个人便签悬浮窗 |
-| `RouletteRecorder.Dalamud/Windows/ConfigWindow.cs` | 设置窗口 |
-| `RouletteRecorder.Dalamud/Helpers/CleanBackgroundManager.cs` | 个人便签 D3D11 真实磨砂背景，移植自 `E:\git\ARH` |
-| `RouletteRecorder.Dalamud/Shaders/*.cso` | D3D11 背景模糊计算着色器资源 |
-| `RouletteRecorder.Dalamud/Resources/zh_CN.json` | 中文本地化 |
-| `RouletteRecorder.Dalamud/Build/LocalizeOutputManifest.ps1` | manifest 本地化和发布包重打包 |
+| `RouletteBuddy/Plugin.cs` | 插件入口、服务注入、事件注册、命令、任务弹出和完成处理 |
+| `RouletteBuddy/Configuration.cs` | 配置结构和默认值 |
+| `RouletteBuddy/DAO/Roulette.cs` | `data.json` 单条任务记录模型 |
+| `RouletteBuddy/DAO/TaskHistoryRoulette.cs` | `task_history.json` 单条任务记录模型 |
+| `RouletteBuddy/Utils/Database.cs` | 数据加载保存、统计、每日/每周任务监控、完成状态判断、历史任务文件自动重载 |
+| `RouletteBuddy/Windows/MainWindow.cs` | 主悬浮窗、Tips、当前时间、历史任务 |
+| `RouletteBuddy/Windows/NoteWindow.cs` | 个人便签悬浮窗 |
+| `RouletteBuddy/Windows/ConfigWindow.cs` | 设置窗口 |
+| `RouletteBuddy/Helpers/CleanBackgroundManager.cs` | 个人便签 D3D11 真实磨砂背景，移植自 `E:\git\ARH` |
+| `RouletteBuddy/Shaders/*.cso` | D3D11 背景模糊计算着色器资源 |
+| `RouletteBuddy/Resources/zh_CN.json` | 中文本地化 |
+| `RouletteBuddy/Build/LocalizeOutputManifest.ps1` | manifest 本地化和发布包重打包 |
 | `.github/workflows/build.yml` | GitHub Actions 构建/发布流程 |
 | `.github/scripts/Make-Repo.ps1` | GitHub Actions 生成 `repo.json` |
 | `repo.json` | Dalamud 插件仓库清单 |
@@ -953,7 +953,7 @@ dotnet build -c Release
 以及：
 
 ```powershell
-Get-Content -Encoding UTF8 output\RouletteRecorder.Dalamud.json
+Get-Content -Encoding UTF8 output\RouletteBuddy.json
 ```
 
 确认：
@@ -966,16 +966,16 @@ Get-Content -Encoding UTF8 output\RouletteRecorder.Dalamud.json
 检查 zip：
 
 ```powershell
-tar -tf output\RouletteRecorder.Dalamud\latest.zip
+tar -tf output\RouletteBuddy\latest.zip
 ```
 
 应该只有类似：
 
 ```text
 CsvHelper.dll
-RouletteRecorder.Dalamud.deps.json
-RouletteRecorder.Dalamud.dll
-RouletteRecorder.Dalamud.json
+RouletteBuddy.deps.json
+RouletteBuddy.dll
+RouletteBuddy.json
 SharpGen.Runtime.COM.dll
 SharpGen.Runtime.dll
 Vortice.Direct3D11.dll
@@ -990,7 +990,7 @@ Vortice.Mathematics.dll
 检查 zip 内 manifest：
 
 ```powershell
-tar -xOf output\RouletteRecorder.Dalamud\latest.zip RouletteRecorder.Dalamud.json
+tar -xOf output\RouletteBuddy\latest.zip RouletteBuddy.json
 ```
 
 ## 14. 已知注意事项
@@ -1004,7 +1004,7 @@ tar -xOf output\RouletteRecorder.Dalamud\latest.zip RouletteRecorder.Dalamud.jso
 7. 幻巧战、零式当前仍有任务搜索器 / 客户端状态读取逻辑，和团本任务不同。
 8. 团本任务 Tips 文案保持“本周有过本记录 / 本周无过本记录”，不要显示“不能确认奖励已领取”括号说明。
 9. `task_history.json` 支持外部修改后自动重载，但已经运行的旧 DLL 不具备该能力，需要重载插件。
-10. 发布包必须用 `output/RouletteRecorder.Dalamud/latest.zip`。
+10. 发布包必须用 `output/RouletteBuddy/latest.zip`。
 11. `LocalizeOutputManifest.ps1` 不要再硬编码版本号。
 12. 如果 Dalamud API 升级，需要重新核对：
    - `IClientState.CfPop`
@@ -1037,7 +1037,7 @@ tar -xOf output\RouletteRecorder.Dalamud\latest.zip RouletteRecorder.Dalamud.jso
 - 增加 `task_history.json` 外部修改自动重载。
 - 为测试第三巡行，在本机多个可能配置目录里手动写入过模拟记录：
   - `pluginConfigs\RouletteBuddy`
-  - `pluginConfigs\RouletteRecorder.Dalamud`
+  - `pluginConfigs\RouletteBuddy`
   - `pluginConfigs\随机任务记录卫月版`
 
 本机模拟记录注意：
@@ -1066,7 +1066,7 @@ dotnet build
 本轮主要变更：
 
 - 新增个人便签悬浮窗：
-  - 新文件 `RouletteRecorder.Dalamud/Windows/NoteWindow.cs`。
+  - 新文件 `RouletteBuddy/Windows/NoteWindow.cs`。
   - 命令 `/prr bq` 用于打开或关闭便签窗口。
   - 支持公共便签和角色便签。
   - 便签内容变化时自动保存。
@@ -1088,8 +1088,8 @@ dotnet build
 - 磨砂背景行为：
   - 先尝试过 `AllowBackgroundBlur` 和 ImGui 半透明模拟，但用户反馈“没有磨砂感觉”。
   - 后参考 `E:\git\ARH`，移植 D3D11 真实磨砂背景方案。
-  - 新增 `RouletteRecorder.Dalamud/Helpers/CleanBackgroundManager.cs`。
-  - 新增 `RouletteRecorder.Dalamud/Shaders/AlphaFix.cso`、`HBlur.cso`、`VBlur.cso`。
+  - 新增 `RouletteBuddy/Helpers/CleanBackgroundManager.cs`。
+  - 新增 `RouletteBuddy/Shaders/AlphaFix.cso`、`HBlur.cso`、`VBlur.cso`。
   - 最初使用 `TerraFX.Interop.Windows` 版本，构建包约 8.64 MB，主要体积来自 `TerraFX.Interop.Windows.dll`。
   - 后续改为 `Vortice.Direct3D11` / `Vortice.DXGI` 版本，保留真实 D3D11 磨砂，发布包降到约 0.595 MB。
   - `.csproj` 开启 `<AllowUnsafeBlocks>true</AllowUnsafeBlocks>`。
@@ -1104,17 +1104,17 @@ dotnet build
 ```text
 README.md
 docs/HANDOFF.md
-RouletteRecorder.Dalamud/Configuration.cs
-RouletteRecorder.Dalamud/Plugin.cs
-RouletteRecorder.Dalamud/Resources/zh_CN.json
-RouletteRecorder.Dalamud/RouletteRecorder.Dalamud.csproj
-RouletteRecorder.Dalamud/Windows/ConfigWindow.cs
-RouletteRecorder.Dalamud/Windows/NoteWindow.cs
-RouletteRecorder.Dalamud/Helpers/CleanBackgroundManager.cs
-RouletteRecorder.Dalamud/Shaders/AlphaFix.cso
-RouletteRecorder.Dalamud/Shaders/HBlur.cso
-RouletteRecorder.Dalamud/Shaders/VBlur.cso
-RouletteRecorder.Dalamud/packages.lock.json
+RouletteBuddy/Configuration.cs
+RouletteBuddy/Plugin.cs
+RouletteBuddy/Resources/zh_CN.json
+RouletteBuddy/RouletteBuddy.csproj
+RouletteBuddy/Windows/ConfigWindow.cs
+RouletteBuddy/Windows/NoteWindow.cs
+RouletteBuddy/Helpers/CleanBackgroundManager.cs
+RouletteBuddy/Shaders/AlphaFix.cso
+RouletteBuddy/Shaders/HBlur.cso
+RouletteBuddy/Shaders/VBlur.cso
+RouletteBuddy/packages.lock.json
 ```
 
 构建验证：
@@ -1134,16 +1134,16 @@ dotnet build
 当前构建包内容检查：
 
 ```powershell
-tar -tf output\RouletteRecorder.Dalamud\latest.zip
+tar -tf output\RouletteBuddy\latest.zip
 ```
 
 结果包含：
 
 ```text
 CsvHelper.dll
-RouletteRecorder.Dalamud.deps.json
-RouletteRecorder.Dalamud.dll
-RouletteRecorder.Dalamud.json
+RouletteBuddy.deps.json
+RouletteBuddy.dll
+RouletteBuddy.json
 SharpGen.Runtime.COM.dll
 SharpGen.Runtime.dll
 Vortice.Direct3D11.dll
@@ -1197,16 +1197,16 @@ dotnet build -c Release
 发布包：
 
 ```text
-output/RouletteRecorder.Dalamud/latest.zip
+output/RouletteBuddy/latest.zip
 ```
 
 发布包预期内容：
 
 ```text
 CsvHelper.dll
-RouletteRecorder.Dalamud.deps.json
-RouletteRecorder.Dalamud.dll
-RouletteRecorder.Dalamud.json
+RouletteBuddy.deps.json
+RouletteBuddy.dll
+RouletteBuddy.json
 SharpGen.Runtime.COM.dll
 SharpGen.Runtime.dll
 Vortice.Direct3D11.dll
@@ -1288,12 +1288,12 @@ weekly:currentAllianceRaid:3
 主要文件：
 
 ```text
-RouletteRecorder.Dalamud/Configuration.cs
-RouletteRecorder.Dalamud/Plugin.cs
-RouletteRecorder.Dalamud/Resources/zh_CN.json
-RouletteRecorder.Dalamud/Utils/Database.cs
-RouletteRecorder.Dalamud/Windows/ConfigWindow.cs
-RouletteRecorder.Dalamud/Windows/MainWindow.cs
+RouletteBuddy/Configuration.cs
+RouletteBuddy/Plugin.cs
+RouletteBuddy/Resources/zh_CN.json
+RouletteBuddy/Utils/Database.cs
+RouletteBuddy/Windows/ConfigWindow.cs
+RouletteBuddy/Windows/MainWindow.cs
 docs/HANDOFF.md
 ```
 
@@ -1387,14 +1387,14 @@ dotnet build
 涉及文件：
 
 ```text
-RouletteRecorder.Dalamud/Plugin.cs
-RouletteRecorder.Dalamud/DAO/Roulette.cs
+RouletteBuddy/Plugin.cs
+RouletteBuddy/DAO/Roulette.cs
 docs/HANDOFF.md
 ```
 
 #### 20.2.1 Plugin.cs — OnCfPop
 
-`RouletteRecorder.Dalamud/Plugin.cs:180`
+`RouletteBuddy/Plugin.cs:180`
 
 在 `ContentsType.Regular` + `TryGetWeeklyMonitorTaskForContent` 命中时，增加：
 
@@ -1406,7 +1406,7 @@ rouletteType = weeklyTaskName;
 
 #### 20.2.2 Roulette.cs — Finish()
 
-`RouletteRecorder.Dalamud/DAO/Roulette.cs:105-108`
+`RouletteBuddy/DAO/Roulette.cs:105-108`
 
 原来的订阅检查逻辑：
 

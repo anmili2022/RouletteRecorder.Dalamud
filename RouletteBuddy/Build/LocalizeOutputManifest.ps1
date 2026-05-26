@@ -31,33 +31,33 @@ $manifest.Tags = @(
 
 # Rename manifest file to match InternalName (Dalamud expects <InternalName>.json inside the zip)
 $manifestDir = Split-Path -Parent $ManifestPath
-$renamedManifestPath = Join-Path -Path $manifestDir -ChildPath "$($manifest.InternalName).json"
-if ([System.IO.File]::Exists($renamedManifestPath)) {
-    Remove-Item -LiteralPath $renamedManifestPath -Force
+$expectedManifestName = "$($manifest.InternalName).json"
+$currentManifestName = Split-Path -Leaf $ManifestPath
+if ($currentManifestName -ne $expectedManifestName) {
+    $renamedManifestPath = Join-Path -Path $manifestDir -ChildPath $expectedManifestName
+    if ([System.IO.File]::Exists($renamedManifestPath)) {
+        Remove-Item -LiteralPath $renamedManifestPath -Force
+    }
+    Rename-Item -LiteralPath $ManifestPath -NewName $expectedManifestName -Force
+    $ManifestPath = $renamedManifestPath
 }
-Rename-Item -LiteralPath $ManifestPath -NewName "$($manifest.InternalName).json" -Force
-$ManifestPath = $renamedManifestPath
 
 # Rename DLL to match InternalName (Dalamud expects <InternalName>.dll)
-$oldDllName = [System.IO.Path]::GetFileNameWithoutExtension($ManifestPath)
-# The original AssemblyName is the DLL name without InternalName suffix
-$originalAssemblyName = "RouletteRecorder.Dalamud"
-$oldDllPath = Join-Path -Path $manifestDir -ChildPath "$originalAssemblyName.dll"
-$newDllPath = Join-Path -Path $manifestDir -ChildPath "$($manifest.InternalName).dll"
-if ([System.IO.File]::Exists($oldDllPath)) {
-    if ([System.IO.File]::Exists($newDllPath)) {
-        Remove-Item -LiteralPath $newDllPath -Force
+$originalAssemblyName = "RouletteBuddy"
+$internalName = $manifest.InternalName
+if ($originalAssemblyName -ne $internalName) {
+    $oldDllPath = Join-Path -Path $manifestDir -ChildPath "$originalAssemblyName.dll"
+    $newDllPath = Join-Path -Path $manifestDir -ChildPath "$internalName.dll"
+    if ([System.IO.File]::Exists($oldDllPath)) {
+        if ([System.IO.File]::Exists($newDllPath)) { Remove-Item -LiteralPath $newDllPath -Force }
+        Rename-Item -LiteralPath $oldDllPath -NewName "$internalName.dll" -Force
     }
-    Rename-Item -LiteralPath $oldDllPath -NewName "$($manifest.InternalName).dll" -Force
-}
-# Also rename .deps.json
-$oldDepsPath = Join-Path -Path $manifestDir -ChildPath "$originalAssemblyName.deps.json"
-$newDepsPath = Join-Path -Path $manifestDir -ChildPath "$($manifest.InternalName).deps.json"
-if ([System.IO.File]::Exists($oldDepsPath)) {
-    if ([System.IO.File]::Exists($newDepsPath)) {
-        Remove-Item -LiteralPath $newDepsPath -Force
+    $oldDepsPath = Join-Path -Path $manifestDir -ChildPath "$originalAssemblyName.deps.json"
+    $newDepsPath = Join-Path -Path $manifestDir -ChildPath "$internalName.deps.json"
+    if ([System.IO.File]::Exists($oldDepsPath)) {
+        if ([System.IO.File]::Exists($newDepsPath)) { Remove-Item -LiteralPath $newDepsPath -Force }
+        Rename-Item -LiteralPath $oldDepsPath -NewName "$internalName.deps.json" -Force
     }
-    Rename-Item -LiteralPath $oldDepsPath -NewName "$($manifest.InternalName).deps.json" -Force
 }
 
 if (-not [string]::IsNullOrWhiteSpace($PackageZipPath)) {

@@ -1,10 +1,10 @@
 using Dalamud.Utility;
 using Newtonsoft.Json;
-using RouletteRecorder.Dalamud.Utils;
+using RouletteBuddy.Utils;
 using System;
 using System.Globalization;
 
-namespace RouletteRecorder.Dalamud.DAO;
+namespace RouletteBuddy.DAO;
 
 public class TaskHistoryRoulette(string? contentName, string? rouletteType, bool isCompleted = false)
 {

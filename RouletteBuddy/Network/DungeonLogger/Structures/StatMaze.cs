@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 
-namespace RouletteRecorder.Dalamud.Network.DungeonLogger.Structures
+namespace RouletteBuddy.Network.DungeonLogger.Structures
 {
     public class StatMaze
     {
