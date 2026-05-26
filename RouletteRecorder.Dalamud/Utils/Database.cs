@@ -44,6 +44,9 @@ public class Database
     public const string DailyTaskTribalQuestsAllowanceKey = "daily:tribalQuestsAllowance";
     public const string WeeklyTaskWondrousTailsKey = "weekly:wondrousTails";
     public const string WeeklyTaskCurrentAllianceRaidKey = "weekly:currentAllianceRaid";
+    public const string WeeklyTaskAllianceRaid1Key = "weekly:currentAllianceRaid:1";
+    public const string WeeklyTaskAllianceRaid2Key = "weekly:currentAllianceRaid:2";
+    public const string WeeklyTaskAllianceRaid3Key = "weekly:currentAllianceRaid:3";
     public const string WeeklyTaskUnrealTrialKey = "weekly:unrealTrial";
     public const string WeeklyTaskSavageRaid1Key = "weekly:savageRaid:1";
     public const string WeeklyTaskSavageRaid2Key = "weekly:savageRaid:2";
@@ -55,8 +58,21 @@ public class Database
     private const int WondrousTailsMaxStickers = 9;
     private const int WeeklyResetDay = (int)DayOfWeek.Tuesday;
     private const int WeeklyResetHour = 16;
-    private const string CurrentAllianceRaidNameKeyword = "第三巡行";
+    private const string CurrentAllianceRaidNameKeyword = "团本";
+    private const string CurrentAllianceRaidCompletionNameKeyword = "第三巡行";
     private const string CurrentUnrealTrialNameKeyword = "神龙幻巧战";
+    private static readonly string[] CurrentAllianceRaidNameKeywords =
+    [
+        "第一巡行",
+        "第二巡行",
+        "第三巡行"
+    ];
+    private static readonly string[] AllianceRaidTaskKeys =
+    [
+        WeeklyTaskAllianceRaid1Key,
+        WeeklyTaskAllianceRaid2Key,
+        WeeklyTaskAllianceRaid3Key
+    ];
     private static readonly string[] CurrentSavageRaidNameKeywords =
     [
         "重量级1",
@@ -294,7 +310,10 @@ public class Database
     public static IEnumerable<(string Key, string Name)> GetWeeklyTaskMonitorOptions()
     {
         yield return (WeeklyTaskWondrousTailsKey, Plugin.Localization.Localize("Wondrous Tails"));
-        yield return (WeeklyTaskCurrentAllianceRaidKey, Plugin.Localization.Localize("Current Alliance Raid"));
+        foreach (var option in GetWeeklyAllianceRaidTaskMonitorOptions())
+        {
+            yield return option;
+        }
         yield return (WeeklyTaskUnrealTrialKey, Plugin.Localization.Localize("Unreal Trial"));
         yield return (WeeklyTaskSavageRaid1Key, Plugin.Localization.Localize("Savage Raid 1"));
         yield return (WeeklyTaskSavageRaid2Key, Plugin.Localization.Localize("Savage Raid 2"));
@@ -302,9 +321,18 @@ public class Database
         yield return (WeeklyTaskSavageRaid4Key, Plugin.Localization.Localize("Savage Raid 4"));
     }
 
+    public static IEnumerable<(string Key, string Name)> GetWeeklyAllianceRaidTaskMonitorOptions()
+    {
+        yield return (WeeklyTaskAllianceRaid1Key, Plugin.Localization.Localize("Alliance Raid 1"));
+        yield return (WeeklyTaskAllianceRaid2Key, Plugin.Localization.Localize("Alliance Raid 2"));
+        yield return (WeeklyTaskAllianceRaid3Key, Plugin.Localization.Localize("Alliance Raid 3"));
+    }
+
     public static IEnumerable<(string Key, string Name)> GetWeeklyNonSavageTaskMonitorOptions()
     {
-        return GetWeeklyTaskMonitorOptions().Where(option => !IsWeeklySavageTaskKey(option.Key));
+        return GetWeeklyTaskMonitorOptions().Where(option =>
+            !IsWeeklyAllianceRaidTaskKey(option.Key) &&
+            !IsWeeklySavageTaskKey(option.Key));
     }
 
     public static IEnumerable<(string Key, string Name)> GetWeeklySavageTaskMonitorOptions()
@@ -398,6 +426,7 @@ public class Database
         {
             WeeklyTaskWondrousTailsKey => GetWondrousTailsStatus(),
             WeeklyTaskCurrentAllianceRaidKey => GetCurrentAllianceRaidStatus(taskKey, taskName),
+            _ when IsWeeklyAllianceRaidTaskKey(taskKey) => GetRecordedWeeklyTaskStatus(taskKey, taskName),
             WeeklyTaskUnrealTrialKey => GetUnrealTrialStatus(taskKey, taskName),
             _ when IsWeeklySavageTaskKey(taskKey) => GetSavageRaidStatus(taskKey, taskName),
             _ => GetRecordedWeeklyTaskStatus(taskKey, taskName)
@@ -413,8 +442,14 @@ public class Database
     {
         return string.Equals(taskKey, WeeklyTaskWondrousTailsKey, StringComparison.OrdinalIgnoreCase) ||
                string.Equals(taskKey, WeeklyTaskCurrentAllianceRaidKey, StringComparison.OrdinalIgnoreCase) ||
+               IsWeeklyAllianceRaidTaskKey(taskKey) ||
                string.Equals(taskKey, WeeklyTaskUnrealTrialKey, StringComparison.OrdinalIgnoreCase) ||
                SavageRaidTaskKeys.Contains(taskKey, StringComparer.OrdinalIgnoreCase);
+    }
+
+    public static bool IsWeeklyAllianceRaidTaskKey(string taskKey)
+    {
+        return AllianceRaidTaskKeys.Contains(taskKey, StringComparer.OrdinalIgnoreCase);
     }
 
     public static bool IsWeeklySavageTaskKey(string taskKey)
@@ -431,6 +466,31 @@ public class Database
         {
             taskKey = WeeklyTaskUnrealTrialKey;
             taskName = Plugin.Localization.Localize("Unreal Trial");
+            return true;
+        }
+
+        for (var i = 0; i < CurrentAllianceRaidNameKeywords.Length && i < AllianceRaidTaskKeys.Length; i++)
+        {
+            if (!IsCurrentAllianceRaidCondition(condition, CurrentAllianceRaidNameKeywords[i]))
+            {
+                continue;
+            }
+
+            taskKey = AllianceRaidTaskKeys[i];
+            taskName = Plugin.Localization.Localize($"Alliance Raid {i + 1}");
+            return true;
+        }
+
+        var currentAllianceRaids = GetCurrentAllianceRaidConditions();
+        for (var i = 0; i < currentAllianceRaids.Length && i < AllianceRaidTaskKeys.Length; i++)
+        {
+            if (currentAllianceRaids[i].RowId != condition.RowId)
+            {
+                continue;
+            }
+
+            taskKey = AllianceRaidTaskKeys[i];
+            taskName = Plugin.Localization.Localize($"Alliance Raid {i + 1}");
             return true;
         }
 
@@ -595,7 +655,7 @@ public class Database
 
     private static MonitorTaskStatus GetCurrentAllianceRaidStatus(string taskKey, string taskName)
     {
-        return GetRecordedWeeklyTaskStatus(taskKey, taskName);
+        return ToRecordedThisWeekStatus(IsCurrentAllianceRaidCompletedInCurrentResetCycle());
     }
 
     private static MonitorTaskStatus GetUnrealTrialStatus(string taskKey, string taskName)
@@ -628,6 +688,73 @@ public class Database
     private static MonitorTaskStatus GetRecordedWeeklyTaskStatus(string taskKey, string taskName)
     {
         return ToRecordedThisWeekStatus(IsTaskHistoryMonitorTaskCompletedInCurrentResetCycle(taskKey, taskName, GetCurrentWeeklyResetCycleStart()));
+    }
+
+    private static bool IsCurrentAllianceRaidCompletedInCurrentResetCycle()
+    {
+        ReloadTaskHistoryIfChanged();
+
+        var playerName = Plugin.GetPlayerName();
+        var worldName = Plugin.GetPlayerWorldName();
+        if (playerName.IsNullOrWhitespace() || worldName.IsNullOrWhitespace())
+        {
+            return false;
+        }
+
+        var completionContentNames = GetCurrentAllianceRaidCompletionContentNames();
+        if (completionContentNames.Length == 0)
+        {
+            return false;
+        }
+
+        var resetAt = GetCurrentWeeklyResetCycleStart();
+        return TaskHistoryRoulettes.Any(roulette =>
+            roulette.IsCompleted &&
+            IsCurrentAllianceRaidCompletionMatched(roulette, completionContentNames) &&
+            string.Equals(roulette.PlayerName, playerName, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(roulette.World, worldName, StringComparison.OrdinalIgnoreCase) &&
+            IsTaskHistoryRouletteInCurrentResetCycle(roulette, resetAt));
+    }
+
+    private static bool IsCurrentAllianceRaidCompletionMatched(TaskHistoryRoulette roulette, IReadOnlyCollection<string> completionContentNames)
+    {
+        if (completionContentNames.Count == 0)
+        {
+            return false;
+        }
+
+        if (!roulette.ContentName.IsNullOrWhitespace() &&
+            completionContentNames.Any(contentName => AreDailyTaskNamesEquivalent(roulette.ContentName, contentName)))
+        {
+            return true;
+        }
+
+        return !roulette.RouletteType.IsNullOrWhitespace() &&
+               completionContentNames.Any(contentName => AreDailyTaskNamesEquivalent(roulette.RouletteType, contentName));
+    }
+
+    private static string[] GetCurrentAllianceRaidCompletionContentNames()
+    {
+        var currentAllianceRaidCompletionConditions = GetCurrentAllianceRaidConditions()
+            .Where(condition => ContainsNormalizedName(condition.Name.ToString(), CurrentAllianceRaidCompletionNameKeyword))
+            .ToArray();
+
+        if (currentAllianceRaidCompletionConditions.Length > 0)
+        {
+            return currentAllianceRaidCompletionConditions
+                .Select(condition => condition.Name.ToString())
+                .Where(name => !name.IsNullOrWhitespace())
+                .ToArray();
+        }
+
+        var currentAllianceRaids = GetCurrentAllianceRaidConditions();
+        if (currentAllianceRaids.Length == 0)
+        {
+            return [];
+        }
+
+        var lastAllianceRaidName = currentAllianceRaids[^1].Name.ToString();
+        return lastAllianceRaidName.IsNullOrWhitespace() ? [] : [lastAllianceRaidName];
     }
 
     private static MonitorTaskStatus GetRewardStatusUnknownWithoutUsingLocalClearRecord(string taskKey, string taskName)
@@ -1332,6 +1459,20 @@ public class Database
         if (string.Equals(taskKey, WeeklyTaskCurrentAllianceRaidKey, StringComparison.OrdinalIgnoreCase))
         {
             yield return CurrentAllianceRaidNameKeyword;
+            yield return "团队任务";
+            yield return "第一巡行";
+            yield return "第二巡行";
+            yield return "第三巡行";
+            yield break;
+        }
+
+        var allianceIndex = Array.FindIndex(AllianceRaidTaskKeys, key => string.Equals(key, taskKey, StringComparison.OrdinalIgnoreCase));
+        if (allianceIndex >= 0 && allianceIndex < CurrentAllianceRaidNameKeywords.Length)
+        {
+            yield return CurrentAllianceRaidNameKeyword;
+            yield return "团队任务";
+            yield return CurrentAllianceRaidNameKeywords[allianceIndex];
+            yield return $"团本{CurrentAllianceRaidNameKeywords[allianceIndex]}";
             yield break;
         }
 
@@ -1348,6 +1489,80 @@ public class Database
             yield return CurrentSavageRaidNameKeywords[savageIndex];
             yield return $"零式{CurrentSavageRaidNameKeywords[savageIndex]}";
         }
+    }
+
+    public static string GetRouletteTypeDisplayName(string? rouletteType, string? monitorTaskKey = null)
+    {
+        if (TryGetAllianceRaidHistoryDisplayName(rouletteType, monitorTaskKey, out var allianceRaidDisplayName))
+        {
+            return allianceRaidDisplayName;
+        }
+
+        return rouletteType ?? "-";
+    }
+
+    private static bool TryGetAllianceRaidHistoryDisplayName(string? rouletteType, string? monitorTaskKey, out string displayName)
+    {
+        if (!rouletteType.IsNullOrWhitespace())
+        {
+            if (ContainsNormalizedName(rouletteType, CurrentAllianceRaidNameKeywords[0]))
+            {
+                displayName = Plugin.Localization.Localize("Alliance Raid 1");
+                return true;
+            }
+
+            if (ContainsNormalizedName(rouletteType, CurrentAllianceRaidNameKeywords[1]))
+            {
+                displayName = Plugin.Localization.Localize("Alliance Raid 2");
+                return true;
+            }
+
+            if (ContainsNormalizedName(rouletteType, CurrentAllianceRaidNameKeywords[2]))
+            {
+                displayName = Plugin.Localization.Localize("Alliance Raid 3");
+                return true;
+            }
+
+            if (rouletteType.Contains("团本", StringComparison.OrdinalIgnoreCase) ||
+                rouletteType.Contains("团队任务", StringComparison.OrdinalIgnoreCase))
+            {
+                displayName = Plugin.Localization.Localize("Current Alliance Raid History Display");
+                return true;
+            }
+        }
+
+        if (monitorTaskKey.IsNullOrWhitespace())
+        {
+            displayName = string.Empty;
+            return false;
+        }
+
+        if (string.Equals(monitorTaskKey, WeeklyTaskAllianceRaid1Key, StringComparison.OrdinalIgnoreCase))
+        {
+            displayName = Plugin.Localization.Localize("Alliance Raid 1");
+            return true;
+        }
+
+        if (string.Equals(monitorTaskKey, WeeklyTaskAllianceRaid2Key, StringComparison.OrdinalIgnoreCase))
+        {
+            displayName = Plugin.Localization.Localize("Alliance Raid 2");
+            return true;
+        }
+
+        if (string.Equals(monitorTaskKey, WeeklyTaskAllianceRaid3Key, StringComparison.OrdinalIgnoreCase))
+        {
+            displayName = Plugin.Localization.Localize("Alliance Raid 3");
+            return true;
+        }
+
+        if (string.Equals(monitorTaskKey, WeeklyTaskCurrentAllianceRaidKey, StringComparison.OrdinalIgnoreCase))
+        {
+            displayName = Plugin.Localization.Localize("Current Alliance Raid History Display");
+            return true;
+        }
+
+        displayName = string.Empty;
+        return false;
     }
 
     public static bool IsTaskHistoryRouletteCompletedInCurrentResetCycle(string rouletteName)
@@ -1432,6 +1647,23 @@ public class Database
         if (string.Equals(taskKey, WeeklyTaskCurrentAllianceRaidKey, StringComparison.OrdinalIgnoreCase))
         {
             return GetCurrentAllianceRaidConditions();
+        }
+
+        var allianceIndex = Array.FindIndex(AllianceRaidTaskKeys, key => string.Equals(key, taskKey, StringComparison.OrdinalIgnoreCase));
+        if (allianceIndex >= 0)
+        {
+            var explicitAllianceMatches = GetContentFinderConditionsByNameKeyword(CurrentAllianceRaidNameKeywords[allianceIndex])
+                .Where(IsAllianceRaidCondition)
+                .ToArray();
+            if (explicitAllianceMatches.Length > 0)
+            {
+                return explicitAllianceMatches;
+            }
+
+            var allianceRaids = GetCurrentAllianceRaidConditions();
+            return allianceIndex < allianceRaids.Length
+                ? [allianceRaids[allianceIndex]]
+                : [];
         }
 
         if (string.Equals(taskKey, WeeklyTaskUnrealTrialKey, StringComparison.OrdinalIgnoreCase))
@@ -1570,14 +1802,6 @@ public class Database
 
     private static ContentFinderCondition[] GetCurrentAllianceRaidConditions()
     {
-        var explicitCurrentAllianceRaids = GetContentFinderConditionsByNameKeyword(CurrentAllianceRaidNameKeyword)
-            .Where(IsAllianceRaidCondition)
-            .ToArray();
-        if (explicitCurrentAllianceRaids.Length > 0)
-        {
-            return explicitCurrentAllianceRaids;
-        }
-
         var candidates = Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()
             .Where(IsAllianceRaidCondition)
             .ToArray();
@@ -1601,9 +1825,7 @@ public class Database
             return [];
         }
 
-        var maxItemLevel = currentExpansionCandidates.Max(condition => condition.ItemLevelRequired);
         return currentExpansionCandidates
-            .Where(condition => condition.ItemLevelRequired == maxItemLevel)
             .OrderBy(condition => condition.SortKey)
             .ThenBy(condition => condition.RowId)
             .ToArray();
@@ -1690,6 +1912,11 @@ public class Database
     private static bool IsCurrentSavageRaidCondition(ContentFinderCondition condition, string nameKeyword)
     {
         return IsSavageRaidCondition(condition) && ContainsNormalizedName(condition.Name.ToString(), nameKeyword);
+    }
+
+    private static bool IsCurrentAllianceRaidCondition(ContentFinderCondition condition, string nameKeyword)
+    {
+        return IsAllianceRaidCondition(condition) && ContainsNormalizedName(condition.Name.ToString(), nameKeyword);
     }
 
     private static bool IsCurrentUnrealTrial(ContentFinderCondition condition)

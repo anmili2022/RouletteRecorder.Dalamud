@@ -59,7 +59,7 @@ public class Configuration : IPluginConfiguration
     public bool DefaultDailyUtilityTaskMonitorInitialized { get; set; } = true;
     public bool DefaultWeeklyTaskMonitorInitialized { get; set; } = true;
     public HashSet<string> MonitoredDailyTaskKeys { get; set; } = ["roulette:3", "roulette:5", "roulette:6", "roulette:7", "roulette:8", "roulette:17", "daily:tribalQuestsAllowance"];
-    public HashSet<string> MonitoredWeeklyTaskKeys { get; set; } = ["weekly:wondrousTails", "weekly:currentAllianceRaid", "weekly:unrealTrial", "weekly:savageRaid:1"];
+    public HashSet<string> MonitoredWeeklyTaskKeys { get; set; } = ["weekly:wondrousTails", "weekly:currentAllianceRaid:1", "weekly:currentAllianceRaid:2", "weekly:currentAllianceRaid:3", "weekly:unrealTrial", "weekly:savageRaid:1"];
     public int TribalQuestCompletionCount { get; set; } = 3;
     public bool MinimalShowCurrentTask { get; set; } = false;
     public bool MinimalShowTaskTime { get; set; } = false;

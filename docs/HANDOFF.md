@@ -1,12 +1,12 @@
 ﻿# 日随伴侣交接文档
 
-> 最后更新：2026-05-21
+> 最后更新：2026-05-24
 > 项目路径：`E:\git\RouletteRecorder.Dalamud`
 > 当前分支：`master`
 > 插件名称：`日随伴侣`
 > 内部名：`日随伴侣卫月版`
-> 当前版本：`1.0.3.0`
-> 当前发布页：`https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.3.0`
+> 当前版本：`1.0.4.0`
+> 当前发布页：`https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.4.0`
 
 ## 1. 接手先看
 
@@ -46,7 +46,7 @@ https://dalamud.dev/api/
 - `data.json` 保存订阅任务记录。
 - `task_history.json` 保存历史任务记录；首次升级时会从旧 `risui.json` 自动复制迁移。
 - 支持每日、每周任务监控 Tips。
-- 支持周常任务：天书奇谈、第三巡行、幻巧战、零式重量级 1-4。
+- 支持周常任务：天书奇谈、团本（第一 / 第二 / 第三巡行）、幻巧战、零式重量级 1-4。
 - 支持标准随机任务完成状态读取。
 - 支持水晶冲突练习赛、段位赛完成状态记录与判断。
 - 支持角色名和服务器名区分。
@@ -175,10 +175,10 @@ RouletteRecorder.Dalamud/RouletteRecorder.Dalamud.csproj
 当前版本字段：
 
 ```xml
-<Version>1.0.3.0</Version>
-<AssemblyVersion>1.0.3.0</AssemblyVersion>
-<FileVersion>1.0.3.0</FileVersion>
-<InformationalVersion>1.0.3.0</InformationalVersion>
+<Version>1.0.4.0</Version>
+<AssemblyVersion>1.0.4.0</AssemblyVersion>
+<FileVersion>1.0.4.0</FileVersion>
+<InformationalVersion>1.0.4.0</InformationalVersion>
 ```
 
 仓库清单：
@@ -193,7 +193,7 @@ repo.json
 {
   "Name": "日随伴侣",
   "InternalName": "日随伴侣卫月版",
-  "AssemblyVersion": "1.0.3.0",
+  "AssemblyVersion": "1.0.4.0",
   "DalamudApiLevel": 15
 }
 ```
@@ -380,23 +380,28 @@ Database.GetWeeklyTaskMonitorOptions()
 | Key | 显示名 | 状态来源 |
 | --- | --- | --- |
 | `weekly:wondrousTails` | 天书奇谈 | `PlayerState` 的天书贴纸数 |
-| `weekly:currentAllianceRaid` | 团本（第三巡行） | 只看 `task_history.json` 本周过本记录 |
+| `weekly:currentAllianceRaid:1` | 团本第一巡行 | 只看 `task_history.json` 本周过本记录 |
+| `weekly:currentAllianceRaid:2` | 团本第二巡行 | 只看 `task_history.json` 本周过本记录 |
+| `weekly:currentAllianceRaid:3` | 团本第三巡行 | 只看 `task_history.json` 本周过本记录 |
 | `weekly:unrealTrial` | 幻巧战（神龙幻巧战） | 优先任务搜索器文本 / `PlayerState` 幻巧状态；无法判断时显示未知 |
 | `weekly:savageRaid:1` | 零式重量级1 | 优先任务搜索器奖励/锁定状态；回退 `task_history.json` |
 | `weekly:savageRaid:2` | 零式重量级2 | 同上 |
 | `weekly:savageRaid:3` | 零式重量级3 | 同上 |
 | `weekly:savageRaid:4` | 零式重量级4 | 同上 |
 
-重要：用户已明确要求“第三巡行取消 UI 读取，只以历史记录为准”。当前实现：
+兼容说明：旧的 `weekly:currentAllianceRaid` 仅保留给历史兼容和旧配置迁移，UI 不再显示。
+
+重要：用户已明确要求“团本取消 UI 读取，只以历史记录为准”。当前实现：
 
 ```csharp
 private static MonitorTaskStatus GetCurrentAllianceRaidStatus(string taskKey, string taskName)
 {
-    return GetRecordedWeeklyTaskStatus(taskKey, taskName);
+    return ToRecordedThisWeekStatus(IsCurrentAllianceRaidCompletedInCurrentResetCycle());
 }
 ```
 
-因此第三巡行 Tips 不再读任务搜索器 UI / Agent / `NumCollectedRewards`。
+因此旧的团本总项 Tips 不再读任务搜索器 UI / Agent / `NumCollectedRewards`。
+第一巡行、第二巡行、第三巡行都会进入历史记录，并分别统计完成状态；旧的团本总项仍然保留第三巡行完成判定作为兼容逻辑。
 
 周常刷新周期：
 
@@ -435,23 +440,27 @@ Tips 会按分组显示已勾选任务：
 
 当前 Tips 不显示长说明文字。刷新时间说明已从顶部长文案移除。
 
-第三巡行和幻巧战在 Tips 里使用短名：
+团本任务和幻巧战在 Tips 里使用短名：
 
 | 设置/记录完整名 | Tips 显示名 |
 | --- | --- |
-| 团本（第三巡行） | 团本 |
+| 团本第一巡行 / 团本第二巡行 / 团本第三巡行 | 团本1 / 团本2 / 团本3 |
 | 幻巧战（神龙幻巧战） | 幻巧战 |
 
-第三巡行命中历史记录时当前文案保持为：
+团本任务命中历史记录时当前文案保持为：
 
 ```text
-团本: 本周有过本记录
+团本1: 本周有过本记录
+团本2: 本周有过本记录
+团本3: 本周有过本记录
 ```
 
 未命中时：
 
 ```text
-团本: 本周无过本记录
+团本1: 本周无过本记录
+团本2: 本周无过本记录
+团本3: 本周无过本记录
 ```
 
 不要再显示“不能确认奖励已领取”之类的括号说明；用户已经要求去掉。
@@ -541,11 +550,11 @@ _ when IsWeeklySavageTaskKey(taskKey) => GetSavageRaidStatus(taskKey, taskName),
 _ => GetRecordedWeeklyTaskStatus(taskKey, taskName)
 ```
 
-第三巡行：
+团本任务：
 
-- 只调用 `GetRecordedWeeklyTaskStatus()`。
-- 只看 `task_history.json` 内当前角色 / 当前服务器 / 当前周常周期内的完成记录。
-- 匹配优先使用 `monitorTaskKey == "weekly:currentAllianceRaid"`。
+- 第一巡行、第二巡行、第三巡行都会被记录进历史，并各自统计完成状态。
+- 新的团本第一 / 第二 / 第三巡行都只看 `task_history.json` 内当前角色 / 当前服务器 / 当前周常周期内的完成记录。
+- 旧的团本总项保留兼容逻辑，仍然只在第三巡行的完成记录出现时判定完成。
 - 不读取任务搜索器 UI，不再通过奖励领取数量判断。
 
 历史记录匹配函数：
@@ -805,7 +814,7 @@ public bool DefaultDailyTaskMonitorInitialized { get; set; } = true;
 public bool DefaultDailyUtilityTaskMonitorInitialized { get; set; } = true;
 public bool DefaultWeeklyTaskMonitorInitialized { get; set; } = true;
 public HashSet<string> MonitoredDailyTaskKeys { get; set; } = ["roulette:3", "roulette:5", "roulette:6", "roulette:7", "roulette:8", "roulette:17", "daily:tribalQuestsAllowance"];
-public HashSet<string> MonitoredWeeklyTaskKeys { get; set; } = ["weekly:wondrousTails", "weekly:currentAllianceRaid", "weekly:unrealTrial", "weekly:savageRaid:1"];
+public HashSet<string> MonitoredWeeklyTaskKeys { get; set; } = ["weekly:wondrousTails", "weekly:currentAllianceRaid:1", "weekly:currentAllianceRaid:2", "weekly:currentAllianceRaid:3", "weekly:unrealTrial", "weekly:savageRaid:1"];
 public int TribalQuestCompletionCount { get; set; } = 3;
 public bool MinimalShowCurrentTask { get; set; } = false;
 public bool MinimalShowTaskTime { get; set; } = false;
@@ -991,9 +1000,9 @@ tar -xOf output\RouletteRecorder.Dalamud\latest.zip RouletteRecorder.Dalamud.jso
 3. 水晶冲突地图不是每日任务监控项，不要重新加入。
 4. `task_history.json` 判断必须匹配角色名和服务器名。
 5. 标准随机任务完成状态优先用客户端数据，不要只靠 `task_history.json`。
-6. 第三巡行当前只看 `task_history.json` 本周过本记录，不读任务搜索器 UI；不要把它改回奖励领取判断。
-7. 幻巧战、零式当前仍有任务搜索器 / 客户端状态读取逻辑，和第三巡行不同。
-8. 第三巡行 Tips 文案保持“本周有过本记录 / 本周无过本记录”，不要显示“不能确认奖励已领取”括号说明。
+6. 团本任务已拆成第一、第二、第三巡行三个独立监控项；它们都只看 `task_history.json` 本周过本记录，不读任务搜索器 UI。
+7. 幻巧战、零式当前仍有任务搜索器 / 客户端状态读取逻辑，和团本任务不同。
+8. 团本任务 Tips 文案保持“本周有过本记录 / 本周无过本记录”，不要显示“不能确认奖励已领取”括号说明。
 9. `task_history.json` 支持外部修改后自动重载，但已经运行的旧 DLL 不具备该能力，需要重载插件。
 10. 发布包必须用 `output/RouletteRecorder.Dalamud/latest.zip`。
 11. `LocalizeOutputManifest.ps1` 不要再硬编码版本号。
@@ -1148,14 +1157,14 @@ Vortice.Mathematics.dll
 - `.cso` shader 是嵌入资源，不会单独出现在 zip 中。
 - 当前 `latest.zip` 大小约 `623,459` 字节（约 `0.595 MB`）。
 - 当前发布包不应再出现 `TerraFX.Interop.Windows.dll`。
-- 本轮作为 `v1.0.3.0` 发布。
+- 本轮作为 `v1.0.4.0` 发布。
 
 ## 17. 2026-05-21 发布记录
 
 本轮发布版本：
 
 ```text
-1.0.3.0
+1.0.4.0
 ```
 
 主要发布内容：
@@ -1216,16 +1225,259 @@ latest.zip
 对应 Release：
 
 ```text
-https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.3.0
+https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.4.0
 ```
 
-## 18. 下次建议
+## 18. 2026-05-24 收工记录
+
+本轮主要处理用户关于“团本任务”的需求：
+
+- 用户明确要求：
+  - 团本任务模块独立出来，做成跟零式一样。
+  - 第一巡行、第二巡行、第三巡行分别统计是否完成。
+  - Tips 文案压缩成更像零式的短风格。
+  - 不要写旧称，直接写“团本”。
+
+### 18.1 当前实现行为
+
+团本任务现在已经拆成三个独立每周监控项：
+
+| Key | 配置 / 历史显示名 | Tips 显示名 | 状态来源 |
+| --- | --- | --- | --- |
+| `weekly:currentAllianceRaid:1` | 团本第一巡行 | 团本1 | `task_history.json` 本周过本记录 |
+| `weekly:currentAllianceRaid:2` | 团本第二巡行 | 团本2 | `task_history.json` 本周过本记录 |
+| `weekly:currentAllianceRaid:3` | 团本第三巡行 | 团本3 | `task_history.json` 本周过本记录 |
+
+关键行为：
+
+- 第一巡行、第二巡行、第三巡行都会进入历史记录。
+- 三个巡行在 Tips 中分别显示完成状态，不再共用一个“团本”完成状态。
+- 团本任务只看 `task_history.json` 当前角色 / 当前服务器 / 当前周常周期内的完成记录。
+- 团本任务不读任务搜索器 UI / Agent / 奖励领取数量。
+- 配置窗口里有独立的“团本任务模块”，位置在每周任务模块和零式任务模块之间。
+- 悬浮窗 Tips 里有独立的“团本任务”分组，显示 `团本1` / `团本2` / `团本3`。
+- 设置页和历史记录仍用较完整的 `团本第一巡行` / `团本第二巡行` / `团本第三巡行`，方便区分。
+- 旧的 `weekly:currentAllianceRaid` 只保留兼容逻辑，不再作为 UI 新选项显示。
+
+### 18.2 兼容和迁移逻辑
+
+旧配置中如果存在：
+
+```text
+weekly:currentAllianceRaid
+```
+
+启动时会在 `Plugin.EnsureDefaultWeeklyTaskMonitors()` 中迁移成：
+
+```text
+weekly:currentAllianceRaid:1
+weekly:currentAllianceRaid:2
+weekly:currentAllianceRaid:3
+```
+
+随后旧 key 会因为不在 `Database.GetWeeklyTaskMonitorOptions()` 的有效选项中而被清理。
+
+注意：
+
+- `Database.WeeklyTaskCurrentAllianceRaidKey` 仍然保留，用于历史兼容。
+- 旧的 `GetCurrentAllianceRaidStatus(...)` / `IsCurrentAllianceRaidCompletedInCurrentResetCycle()` 也仍保留兼容逻辑：旧总项只认第三巡行完成。
+- 新 UI 正常情况下不再展示旧总项；不要把旧总项重新加回 `GetWeeklyTaskMonitorOptions()`。
+
+### 18.3 本轮关键代码改动
+
+主要文件：
+
+```text
+RouletteRecorder.Dalamud/Configuration.cs
+RouletteRecorder.Dalamud/Plugin.cs
+RouletteRecorder.Dalamud/Resources/zh_CN.json
+RouletteRecorder.Dalamud/Utils/Database.cs
+RouletteRecorder.Dalamud/Windows/ConfigWindow.cs
+RouletteRecorder.Dalamud/Windows/MainWindow.cs
+docs/HANDOFF.md
+```
+
+关键实现点：
+
+- `Database.cs`
+  - 新增：
+    - `WeeklyTaskAllianceRaid1Key`
+    - `WeeklyTaskAllianceRaid2Key`
+    - `WeeklyTaskAllianceRaid3Key`
+    - `CurrentAllianceRaidNameKeywords`
+    - `AllianceRaidTaskKeys`
+  - 新增 `GetWeeklyAllianceRaidTaskMonitorOptions()`。
+  - `GetWeeklyNonSavageTaskMonitorOptions()` 会排除团本任务和零式任务，避免团本重复出现在普通周常分组。
+  - `TryGetWeeklyMonitorTaskForContent(...)` 会优先把当前团本匹配到第一 / 第二 / 第三巡行独立 key。
+  - `GetWeeklyTaskConditions(...)` 支持按团本独立 key 返回对应巡行的 `ContentFinderCondition`。
+  - `GetRouletteTypeDisplayName(...)` 会把历史记录里的巡行识别成 `团本第一巡行` / `团本第二巡行` / `团本第三巡行`。
+
+- `Plugin.cs`
+  - `EnsureDefaultWeeklyTaskMonitors()` 增加旧团本总项到新三项的迁移。
+
+- `ConfigWindow.cs`
+  - 新增“团本任务模块”。
+  - 位置在“每周任务模块”和“零式任务模块”之间。
+
+- `MainWindow.cs`
+  - Tips 新增“团本任务”分组。
+  - `GetMonitorTaskTipDisplayName(...)` 把三个团本项显示为 `团本1` / `团本2` / `团本3`。
+
+- `zh_CN.json`
+  - 新增团本模块和短名文案。
+  - 已把用户可见文案里的旧称去掉。
+
+### 18.4 文案约定
+
+用户明确要求直接写“团本”，因此当前文案约定如下：
+
+| 场景 | 文案 |
+| --- | --- |
+| 设置模块标题 | 团本任务模块 |
+| Tips 分组标题 | 团本任务 |
+| Tips 条目 | 团本1 / 团本2 / 团本3 |
+| 设置项 / 历史类型 | 团本第一巡行 / 团本第二巡行 / 团本第三巡行 |
+| 旧总项兼容显示 | 团本 |
+
+如果后续继续改文案，注意不要重新写回旧称。
+
+### 18.5 构建验证
+
+本轮代码改动后已经执行：
+
+```powershell
+dotnet build
+```
+
+结果：
+
+```text
+已成功生成。
+0 个警告
+0 个错误
+```
+
+当前只完成本地构建验证，尚未执行发布流程。
+如果需要发布，请继续按 `docs/RELEASE.md` 走 Release 构建、打包、更新 `repo.json` 和 GitHub Release。
+
+### 18.6 当前待注意事项
+
+- 团本完成状态依赖实际历史记录，判断时必须匹配当前角色名和服务器名。
+- 如果用户反馈“打了但没显示完成”，优先检查：
+  - `task_history.json` 是否有该巡行记录。
+  - 记录的 `IsCompleted` 是否为 `true`。
+  - `playername` 和 `world` 是否与当前角色完全一致。
+  - 记录时间是否落在当前每周刷新周期内。
+  - `monitorTaskKey` 是否为新 key，或 `ContentName` 是否能匹配对应巡行名称。
+- 旧历史记录若没有新 `monitorTaskKey`，仍可通过 `ContentName` / `RouletteType` 的巡行名匹配。
+- 不要把团本改回任务搜索器奖励领取判断；用户之前已经明确要求团本只以历史记录为准。
+
+## 20. 2026-05-24 收工记录（直接排本不进历史记录修复）
+
+本轮修复了一个 bug：直接指定排本（非随机排随）的周常监控任务（如24人团队本）不会出现在主历史记录（`data.json` / 「历史任务」标签页）中。
+
+### 20.1 问题根因
+
+直接排本时，`CfPop` 事件的 `poppedContentType` 为 `ContentsType.Regular`，`OnCfPop` 只设置了 `TaskHistoryRoulette` 的字段，没有设置主 `Roulette` 的 `rouletteType`。随后 `Roulette.Finish()` 因为 `Instance.RouletteType == null` 直接跳过保存，导致 `Database.InsertRoulette()` 不会被调用。
+
+`TaskHistoryRoulette` 正确记录到了 `task_history.json`，但「历史任务」标签页只展示 `Database.Roulettes`（来自 `data.json`），所以用户看不到记录。
+
+### 20.2 本轮修改
+
+涉及文件：
+
+```text
+RouletteRecorder.Dalamud/Plugin.cs
+RouletteRecorder.Dalamud/DAO/Roulette.cs
+docs/HANDOFF.md
+```
+
+#### 20.2.1 Plugin.cs — OnCfPop
+
+`RouletteRecorder.Dalamud/Plugin.cs:180`
+
+在 `ContentsType.Regular` + `TryGetWeeklyMonitorTaskForContent` 命中时，增加：
+
+```csharp
+rouletteType = weeklyTaskName;
+```
+
+使主 `Roulette` 的 `RouletteType` 不再为 null，从而能进入 `Finish()` 的保存流程。
+
+#### 20.2.2 Roulette.cs — Finish()
+
+`RouletteRecorder.Dalamud/DAO/Roulette.cs:105-108`
+
+原来的订阅检查逻辑：
+
+```csharp
+var currContentRoulette = Database.CfRoulettes.FirstOrDefault(x => x.Name.ToString().Equals(RouletteType));
+var isSubscribedRouletteType = Plugin.Configuration.SubscribedRouletteIds.Contains(currContentRoulette.RowId);
+if (Instance.RouletteType == null || Instance.ContentName == null || !isSubscribedRouletteType) return;
+```
+
+改为：
+
+```csharp
+var currContentRoulette = Database.CfRoulettes.FirstOrDefault(x => x.Name.ToString().Equals(RouletteType));
+var isKnownRoulette = currContentRoulette.RowId != 0;
+var isSubscribed = !isKnownRoulette || Plugin.Configuration.SubscribedRouletteIds.Contains(currContentRoulette.RowId);
+if (Instance.RouletteType == null || Instance.ContentName == null || !isSubscribed) return;
+```
+
+逻辑说明：
+
+- **已知轮盘（`ContentRoulette` 名称匹配成功，`RowId != 0`）**：走原来的 `SubscribedRouletteIds` 订阅检查，未订阅则跳过。
+- **未知类型（周常任务名，不匹配任何 `CfRoulettes`，`RowId == 0`）**：跳过订阅检查，直接保存。
+
+`ContentRoulette` 是 struct，`FirstOrDefault` 未命中时返回 `default(ContentRoulette)`，其 `RowId` 为 0。利用这一点区分已知轮盘和未知类型。
+
+### 20.3 行为变化
+
+改动前：
+
+| 场景 | 主历史（data.json） | 任务历史（task_history.json） |
+| --- | --- | --- |
+| 随机排随命中订阅轮盘 | ✅ 记录 | ✅ 记录 |
+| 随机排随未订阅轮盘 | ❌ 跳过 | ✅ 记录 |
+| 直接排本周常任务（团本等） | ❌ 跳过 | ✅ 记录 |
+| 直接排本非周常任务 | ❌ 跳过 | ❌ 跳过 |
+
+改动后：
+
+| 场景 | 主历史（data.json） | 任务历史（task_history.json） |
+| --- | --- | --- |
+| 随机排随命中订阅轮盘 | ✅ 记录 | ✅ 记录 |
+| 随机排随未订阅轮盘 | ❌ 跳过 | ✅ 记录 |
+| 直接排本周常任务（团本等） | ✅ 记录 | ✅ 记录 |
+| 直接排本非周常任务 | ❌ 跳过 | ❌ 跳过 |
+
+### 20.4 历史标签页显示
+
+`RouletteType` 被设为周常任务名（如 `Plugin.Localization.Localize("Alliance Raid 1")` ≈ `"团本第一巡行"`），经 `GetRouletteTypeDisplayName` → `TryGetAllianceRaidHistoryDisplayName` 中的 `ContainsNormalizedName` 匹配关键词（`"第一巡行"` / `"第二巡行"` / `"第三巡行"`），会显示为 `"团本第一巡行"` / `"团本第二巡行"` / `"团本第三巡行"`。
+
+### 20.5 构建验证
+
+```powershell
+dotnet build
+```
+
+结果：
+
+```text
+已成功生成。
+0 个警告
+0 个错误
+```
+
+## 21. 下次建议
 
 - 如用户需要，增加 `/prr on` 和 `/prr off`。
 - 后续可把 `MinimalShow...` 迁移为通用 `Show...`，并做配置迁移。
 - 可增加“一键恢复默认设置”。
 - 可增加历史记录清空、备份或导入功能。
 - 可增加 Tips 中的刷新时间开关，而不是固定显示。
+- 如用户确认不再需要旧总项兼容，可在未来版本中进一步清理 `WeeklyTaskCurrentAllianceRaidKey` 相关 UI 兼容路径，但要谨慎处理已有配置和历史记录。
 - 进游戏实测个人便签真实磨砂背景：
   - 若不生效，优先看 Dalamud 日志中 `CleanBackgroundManager` 的 D3D11 设备、shader、SRV/UAV 初始化情况。
   - 若用户希望标题栏也完全参与自定义磨砂，可考虑像 ARH 一样改成 `NoTitleBar` 并手绘标题栏、关闭按钮和折叠按钮；当前实现保留原生标题栏以满足“有标题栏 / 有折叠按钮”的需求。

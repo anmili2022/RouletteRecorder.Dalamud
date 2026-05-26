@@ -103,8 +103,9 @@ public class Roulette(string? contentName, string? rouletteType, bool isComplete
             if (Instance == null) return;
 
             var currContentRoulette = Database.CfRoulettes.FirstOrDefault(x => x.Name.ToString().Equals(RouletteType));
-            var isSubscribedRouletteType = Plugin.Configuration.SubscribedRouletteIds.Contains(currContentRoulette.RowId);
-            if (Instance.RouletteType == null || Instance.ContentName == null || !isSubscribedRouletteType) return;
+            var isKnownRoulette = currContentRoulette.RowId != 0;
+            var isSubscribed = !isKnownRoulette || Plugin.Configuration.SubscribedRouletteIds.Contains(currContentRoulette.RowId);
+            if (Instance.RouletteType == null || Instance.ContentName == null || !isSubscribed) return;
 
             Instance.JobName = Plugin.GetJobName() ?? "未知职业";
             Instance.EndedAt ??= DateTime.Now.ToString("T");

@@ -1,9 +1,9 @@
-# 日随伴侣发布流程
+﻿# 日随伴侣发布流程
 
 > 最后更新：2026-05-21
-> 当前版本：`1.0.3.0`
+> 当前版本：`1.0.4.0`
 > 当前仓库：`https://github.com/anmili2022/RouletteRecorder.Dalamud`
-> 当前 Release：`https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.3.0`
+> 当前 Release：`https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.4.0`
 
 本文档用于下次快速发布，尽量按顺序复制执行。
 
@@ -52,7 +52,7 @@ gh auth status
 当前版本是：
 
 ```text
-1.0.3.0
+1.0.4.0
 ```
 
 下次普通功能更新建议使用：
@@ -64,7 +64,7 @@ gh auth status
 以下命令里的版本号按实际发布版本替换：
 
 ```powershell
-$oldVersion = "1.0.3.0"
+$oldVersion = "1.0.4.0"
 $newVersion = "1.0.4.0"
 ```
 
@@ -88,7 +88,7 @@ RouletteRecorder.Dalamud/RouletteRecorder.Dalamud.csproj
 也可以用命令替换：
 
 ```powershell
-$oldVersion = "1.0.3.0"
+$oldVersion = "1.0.4.0"
 $newVersion = "1.0.4.0"
 (Get-Content -Encoding UTF8 RouletteRecorder.Dalamud\RouletteRecorder.Dalamud.csproj) -replace [regex]::Escape($oldVersion), $newVersion | Set-Content -Encoding UTF8 RouletteRecorder.Dalamud\RouletteRecorder.Dalamud.csproj
 (Get-Content -Encoding UTF8 docs\HANDOFF.md) -replace [regex]::Escape($oldVersion), $newVersion | Set-Content -Encoding UTF8 docs\HANDOFF.md

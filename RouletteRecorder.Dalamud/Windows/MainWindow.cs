@@ -265,7 +265,7 @@ public sealed class MainWindow : Window, IDisposable
             ImGui.TextWrapped(roulette.ContentName ?? "-");
 
             ImGui.TableNextColumn();
-            ImGui.TextWrapped(roulette.RouletteType ?? "-");
+            ImGui.TextWrapped(Database.GetRouletteTypeDisplayName(roulette.RouletteType));
 
             ImGui.TableNextColumn();
             ImGui.TextUnformatted(roulette.GetDurationText());
@@ -381,6 +381,14 @@ public sealed class MainWindow : Window, IDisposable
             ref hasVisibleTasks);
 
         DrawMonitorTaskTipSection(
+            "Alliance Raid Tasks",
+            Database.GetWeeklyAllianceRaidTaskMonitorOptions(),
+            Plugin.Configuration.MonitoredWeeklyTaskKeys,
+            Database.GetWeeklyMonitorTaskStatus,
+            ref hasSelectedTasks,
+            ref hasVisibleTasks);
+
+        DrawMonitorTaskTipSection(
             "Savage Raid Tasks",
             Database.GetWeeklySavageTaskMonitorOptions(),
             Plugin.Configuration.MonitoredWeeklyTaskKeys,
@@ -446,6 +454,21 @@ public sealed class MainWindow : Window, IDisposable
         if (string.Equals(taskKey, Database.WeeklyTaskCurrentAllianceRaidKey, StringComparison.OrdinalIgnoreCase))
         {
             return Plugin.Localization.Localize("Current Alliance Raid Tip Name");
+        }
+
+        if (string.Equals(taskKey, Database.WeeklyTaskAllianceRaid1Key, StringComparison.OrdinalIgnoreCase))
+        {
+            return Plugin.Localization.Localize("Alliance Raid 1 Tip Name");
+        }
+
+        if (string.Equals(taskKey, Database.WeeklyTaskAllianceRaid2Key, StringComparison.OrdinalIgnoreCase))
+        {
+            return Plugin.Localization.Localize("Alliance Raid 2 Tip Name");
+        }
+
+        if (string.Equals(taskKey, Database.WeeklyTaskAllianceRaid3Key, StringComparison.OrdinalIgnoreCase))
+        {
+            return Plugin.Localization.Localize("Alliance Raid 3 Tip Name");
         }
 
         if (string.Equals(taskKey, Database.WeeklyTaskUnrealTrialKey, StringComparison.OrdinalIgnoreCase))

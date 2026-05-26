@@ -371,6 +371,10 @@ public sealed class ConfigWindow : Window, IDisposable
             "weeklyTaskMonitor");
 
         ImGui.Spacing();
+        DrawSubTitle("Alliance Raid Task Module");
+        DrawWeeklyAllianceRaidTaskModule();
+
+        ImGui.Spacing();
         DrawSubTitle("Savage Raid Task Module");
         DrawWeeklySavageTaskModule();
 
@@ -411,6 +415,22 @@ public sealed class ConfigWindow : Window, IDisposable
         ImGui.Spacing();
         ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.DalamudGrey);
         ImGui.TextWrapped(Plugin.Localization.Localize("Savage Raid Tasks Hint"));
+        ImGui.PopStyleColor();
+    }
+
+    private static void DrawWeeklyAllianceRaidTaskModule()
+    {
+        var allianceRaidOptions = Database.GetWeeklyAllianceRaidTaskMonitorOptions().ToArray();
+        DrawTaskMonitorOptionTable(
+            "WeeklyAllianceRaidTaskMonitorTable",
+            allianceRaidOptions,
+            optionKey => Plugin.Configuration.MonitoredWeeklyTaskKeys.Contains(optionKey),
+            (optionKey, selected) => Plugin.Configuration.SetMonitoredWeeklyTaskKey(optionKey, selected),
+            "weeklyAllianceRaidTaskMonitor");
+
+        ImGui.Spacing();
+        ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.DalamudGrey);
+        ImGui.TextWrapped(Plugin.Localization.Localize("Alliance Raid Tasks Hint"));
         ImGui.PopStyleColor();
     }
 
@@ -594,7 +614,7 @@ public sealed class ConfigWindow : Window, IDisposable
                 ImGui.TextWrapped(record.ContentName ?? "-");
 
                 ImGui.TableNextColumn();
-                ImGui.TextWrapped(record.RouletteType ?? "-");
+                ImGui.TextWrapped(Database.GetRouletteTypeDisplayName(record.RouletteType));
 
                 ImGui.TableNextColumn();
                 ImGui.TextUnformatted(record.GetDurationText(record.IsCompleted ? null : DateTime.Now));
@@ -671,7 +691,7 @@ public sealed class ConfigWindow : Window, IDisposable
                 ImGui.TextWrapped(record.ContentName ?? "-");
 
                 ImGui.TableNextColumn();
-                ImGui.TextWrapped(record.RouletteType ?? "-");
+                ImGui.TextWrapped(Database.GetRouletteTypeDisplayName(record.RouletteType, record.MonitorTaskKey));
 
                 ImGui.TableNextColumn();
                 ImGui.TextWrapped(GetTaskHistoryStartTimeText(record));

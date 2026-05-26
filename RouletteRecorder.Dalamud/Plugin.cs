@@ -177,6 +177,7 @@ public sealed class Plugin : IDalamudPlugin
                 taskHistoryRouletteType = weeklyTaskName;
                 taskHistoryMonitorTaskKey = weeklyTaskKey;
                 shouldSaveTaskHistory = true;
+                rouletteType = weeklyTaskName;
                 PluginLog.Debug($"[OnCfPop] Detected weekly monitor task pop: {weeklyTaskName}, key: {weeklyTaskKey}, content: {condition.Name}");
             }
         }
@@ -384,11 +385,19 @@ public sealed class Plugin : IDalamudPlugin
 
     private static void EnsureDefaultWeeklyTaskMonitors()
     {
+        var configurationChanged = false;
+        if (Configuration.MonitoredWeeklyTaskKeys.Remove(Database.WeeklyTaskCurrentAllianceRaidKey))
+        {
+            configurationChanged = true;
+            configurationChanged |= Configuration.MonitoredWeeklyTaskKeys.Add(Database.WeeklyTaskAllianceRaid1Key);
+            configurationChanged |= Configuration.MonitoredWeeklyTaskKeys.Add(Database.WeeklyTaskAllianceRaid2Key);
+            configurationChanged |= Configuration.MonitoredWeeklyTaskKeys.Add(Database.WeeklyTaskAllianceRaid3Key);
+        }
+
         var validWeeklyTaskKeys = Database.GetWeeklyTaskMonitorOptions()
             .Select(option => option.Key)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var configurationChanged = false;
         if (!Configuration.DefaultWeeklyTaskMonitorInitialized)
         {
             foreach (var option in Database.GetWeeklyTaskMonitorOptions())
