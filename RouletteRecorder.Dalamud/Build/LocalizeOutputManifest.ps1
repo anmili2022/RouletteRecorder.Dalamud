@@ -10,8 +10,8 @@ function Convert-UnicodeEscape {
     return [System.Text.RegularExpressions.Regex]::Unescape($Value)
 }
 
-$utf8 = [System.Text.Encoding]::UTF8
-$manifestText = [System.IO.File]::ReadAllText($ManifestPath, $utf8)
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+$manifestText = [System.IO.File]::ReadAllText($ManifestPath, $utf8NoBom)
 $manifest = $manifestText | ConvertFrom-Json
 $newLine = [System.Environment]::NewLine
 
@@ -27,7 +27,7 @@ $manifest.Tags = @(
     'plugin'
 )
 
-[System.IO.File]::WriteAllText($ManifestPath, ($manifest | ConvertTo-Json -Depth 10), $utf8)
+[System.IO.File]::WriteAllText($ManifestPath, ($manifest | ConvertTo-Json -Depth 10), $utf8NoBom)
 
 if (-not [string]::IsNullOrWhiteSpace($PackageZipPath)) {
     $outputDirectory = Split-Path -Parent $ManifestPath
