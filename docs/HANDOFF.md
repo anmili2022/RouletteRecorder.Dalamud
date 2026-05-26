@@ -4,7 +4,7 @@
 > 项目路径：`E:\git\RouletteRecorder.Dalamud`
 > 当前分支：`master`
 > 插件名称：`日随伴侣`
-> 内部名：`日随伴侣卫月版`
+> 内部名：`RouletteBuddy`
 > 当前版本：`1.0.4.0`
 > 当前发布页：`https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.4.0`
 
@@ -192,7 +192,7 @@ repo.json
 ```json
 {
   "Name": "日随伴侣",
-  "InternalName": "日随伴侣卫月版",
+  "InternalName": "RouletteBuddy",
   "AssemblyVersion": "1.0.4.0",
   "DalamudApiLevel": 15
 }
@@ -207,7 +207,7 @@ RouletteRecorder.Dalamud/Build/LocalizeOutputManifest.ps1
 它负责：
 
 - 把输出 manifest 的 `Name` 固定为 `日随伴侣`。
-- 把输出 manifest 的 `InternalName` 固定为 `日随伴侣卫月版`。
+- 把输出 manifest 的 `InternalName` 固定为 `RouletteBuddy`。
 - 写入中英双语 `Description` / `Punchline` / `Tags`。
 - 重新打包 `output/RouletteRecorder.Dalamud/latest.zip`，保证 zip 内 manifest 也是中文内部名。
 - 不再硬编码 `AssemblyVersion`，版本以 `.csproj` 为准。
@@ -223,7 +223,7 @@ Plugin.PluginInterface.ConfigDirectory.FullName
 常见本地路径：
 
 ```text
-C:\Users\Administrator\AppData\Roaming\XIVLauncherCN\pluginConfigs\日随伴侣卫月版\
+C:\Users\Administrator\AppData\Roaming\XIVLauncherCN\pluginConfigs\RouletteBuddy\
 ```
 
 ### 5.1 data.json
@@ -834,7 +834,7 @@ public Dictionary<string, string> CharacterNoteContents { get; set; } = [];
 注意：
 
 - 默认订阅 `SubscribedRouletteIds = [9]` 是指导者随机任务。
-- 默认每日/每周任务监控项来自 2026-05-18 读取到的当前用户配置 `日随伴侣卫月版.json`。
+- 默认每日/每周任务监控项来自 2026-05-18 读取到的当前用户配置 `RouletteBuddy.json`。
 - 默认蛮族任务完成次数阈值为 3。
 - 如果将来重命名 `MinimalShow...`，要做配置迁移，避免用户升级后设置丢失。
 
@@ -959,7 +959,7 @@ Get-Content -Encoding UTF8 output\RouletteRecorder.Dalamud.json
 确认：
 
 - `Name` 是 `日随伴侣`。
-- `InternalName` 是 `日随伴侣卫月版`。
+- `InternalName` 是 `RouletteBuddy`。
 - `AssemblyVersion` 是目标版本。
 - `DalamudApiLevel` 是 `15`。
 
@@ -1036,7 +1036,7 @@ tar -xOf output\RouletteRecorder.Dalamud\latest.zip RouletteRecorder.Dalamud.jso
 - Tips 第三巡行命中历史记录时显示“本周有过本记录”，不再显示“不能确认奖励已领取”说明。
 - 增加 `task_history.json` 外部修改自动重载。
 - 为测试第三巡行，在本机多个可能配置目录里手动写入过模拟记录：
-  - `pluginConfigs\日随伴侣卫月版`
+  - `pluginConfigs\RouletteBuddy`
   - `pluginConfigs\RouletteRecorder.Dalamud`
   - `pluginConfigs\随机任务记录卫月版`
 

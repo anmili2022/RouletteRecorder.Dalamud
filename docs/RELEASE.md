@@ -145,7 +145,7 @@ Get-Content -Encoding UTF8 output\RouletteRecorder.Dalamud.json
 
 ```json
 "Name": "日随伴侣"
-"InternalName": "日随伴侣卫月版"
+"InternalName": "RouletteBuddy"
 "AssemblyVersion": "1.0.4.0"
 "DalamudApiLevel": 15
 ```
@@ -180,7 +180,7 @@ tar -xOf output\RouletteRecorder.Dalamud\latest.zip RouletteRecorder.Dalamud.jso
 也要确认：
 
 ```json
-"InternalName": "日随伴侣卫月版"
+"InternalName": "RouletteBuddy"
 "AssemblyVersion": "1.0.4.0"
 ```
 
@@ -351,7 +351,7 @@ v1.0.4.0
 1. 不要上传 `output/latest.zip`。
 2. 必须上传 `output/RouletteRecorder.Dalamud/latest.zip`。
 3. zip 内不要包含旧的 `latest.zip`。
-4. zip 内 manifest 的 `InternalName` 必须是 `日随伴侣卫月版`。
+4. zip 内 manifest 的 `InternalName` 必须是 `RouletteBuddy`。
 5. `LocalizeOutputManifest.ps1` 不要硬编码版本号。
 6. `repo.json` 的三个下载链接都要指向新 tag。
 7. 打 tag 前先 commit，否则 tag 可能不包含本次改动。
