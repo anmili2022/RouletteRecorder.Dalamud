@@ -38,6 +38,28 @@ if ([System.IO.File]::Exists($renamedManifestPath)) {
 Rename-Item -LiteralPath $ManifestPath -NewName "$($manifest.InternalName).json" -Force
 $ManifestPath = $renamedManifestPath
 
+# Rename DLL to match InternalName (Dalamud expects <InternalName>.dll)
+$oldDllName = [System.IO.Path]::GetFileNameWithoutExtension($ManifestPath)
+# The original AssemblyName is the DLL name without InternalName suffix
+$originalAssemblyName = "RouletteRecorder.Dalamud"
+$oldDllPath = Join-Path -Path $manifestDir -ChildPath "$originalAssemblyName.dll"
+$newDllPath = Join-Path -Path $manifestDir -ChildPath "$($manifest.InternalName).dll"
+if ([System.IO.File]::Exists($oldDllPath)) {
+    if ([System.IO.File]::Exists($newDllPath)) {
+        Remove-Item -LiteralPath $newDllPath -Force
+    }
+    Rename-Item -LiteralPath $oldDllPath -NewName "$($manifest.InternalName).dll" -Force
+}
+# Also rename .deps.json
+$oldDepsPath = Join-Path -Path $manifestDir -ChildPath "$originalAssemblyName.deps.json"
+$newDepsPath = Join-Path -Path $manifestDir -ChildPath "$($manifest.InternalName).deps.json"
+if ([System.IO.File]::Exists($oldDepsPath)) {
+    if ([System.IO.File]::Exists($newDepsPath)) {
+        Remove-Item -LiteralPath $newDepsPath -Force
+    }
+    Rename-Item -LiteralPath $oldDepsPath -NewName "$($manifest.InternalName).deps.json" -Force
+}
+
 if (-not [string]::IsNullOrWhiteSpace($PackageZipPath)) {
     $outputDirectory = Split-Path -Parent $ManifestPath
     if ((Test-Path -LiteralPath $outputDirectory) -and (Test-Path -LiteralPath (Split-Path -Parent $PackageZipPath))) {
