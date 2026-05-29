@@ -9,7 +9,7 @@ namespace RouletteBuddy
 {
     public class Localization
     {
-        private readonly string currentLanguage;
+        private string currentLanguage;
         private Dictionary<string, string> languageDict = [];
         internal Localization(string currentLanguage)
         {
@@ -35,6 +35,13 @@ namespace RouletteBuddy
 #endif
 
             return message;
+        }
+
+        internal void SwitchLanguage(string language)
+        {
+            currentLanguage = language;
+            languageDict.Clear();
+            LoadLanguage(language);
         }
 
         internal void LoadLanguage(string language)

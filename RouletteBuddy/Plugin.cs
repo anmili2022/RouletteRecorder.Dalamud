@@ -49,7 +49,6 @@ public sealed class Plugin : IDalamudPlugin
     public Plugin()
     {
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-        Configuration.Language = "zh_CN";
         Localization = new Localization(Configuration.Language);
         Database.Load();
         EnsureDefaultSubscriptions();
@@ -179,6 +178,12 @@ public sealed class Plugin : IDalamudPlugin
                 shouldSaveTaskHistory = true;
                 rouletteType = weeklyTaskName;
                 PluginLog.Debug($"[OnCfPop] Detected weekly monitor task pop: {weeklyTaskName}, key: {weeklyTaskKey}, content: {condition.Name}");
+            }
+            else if (Plugin.Configuration.RecordAllDungeons)
+            {
+                taskHistoryRouletteType = condition.Name.ToString();
+                shouldSaveTaskHistory = true;
+                PluginLog.Debug($"[OnCfPop] RecordAllDungeons: recording {condition.Name}");
             }
         }
 

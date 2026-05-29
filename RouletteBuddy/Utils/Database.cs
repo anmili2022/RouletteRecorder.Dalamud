@@ -37,6 +37,8 @@ public readonly record struct MonitorTaskStatus(
 
 public class Database
 {
+    private static string? lastCompletedCheckPlayerIdentity;
+
     public const string DailyTaskRouletteKeyPrefix = "roulette:";
     public const string DailyTaskContentFinderConditionKeyPrefix = "contentFinderCondition:";
     public const string DailyTaskCrystallineConflictCasualKey = "crystallineConflict:casual";
@@ -403,16 +405,34 @@ public class Database
 
     public static bool IsDailyTaskCompletedInCurrentResetCycle(string taskKey, string rouletteName)
     {
-        if (TryGetClientRouletteCompletion(taskKey, out var isCompleted))
+        var currentIdentity = $"{Plugin.GetPlayerName()}@{Plugin.GetPlayerWorldName()}";
+
+        // Client data shortcut: only trust if verified for current character
+        if (string.Equals(currentIdentity, lastCompletedCheckPlayerIdentity, StringComparison.OrdinalIgnoreCase) &&
+            TryGetClientRouletteCompletion(taskKey, out var isCompleted))
         {
             return isCompleted;
         }
 
-        return IsTaskHistoryRouletteCompletedInCurrentResetCycle(rouletteName);
+        // Always verify with task history (filtered by current player name/world)
+        var result = IsTaskHistoryRouletteCompletedInCurrentResetCycle(rouletteName);
+
+        // Cache identity only when task history confirms completion
+        if (result)
+        {
+            lastCompletedCheckPlayerIdentity = currentIdentity;
+        }
+
+        return result;
     }
 
     public static MonitorTaskStatus GetDailyMonitorTaskStatus(string taskKey, string taskName)
     {
+        if (!Plugin.ClientState.IsLoggedIn)
+        {
+            return UnknownStatus("Not logged in");
+        }
+
         return taskKey switch
         {
             DailyTaskTribalQuestsAllowanceKey => GetTribalQuestsAllowanceStatus(),
@@ -729,8 +749,9 @@ public class Database
             return true;
         }
 
-        return !roulette.RouletteType.IsNullOrWhitespace() &&
-               completionContentNames.Any(contentName => AreDailyTaskNamesEquivalent(roulette.RouletteType, contentName));
+        var displayType = GetRouletteTypeDisplayName(roulette.RouletteType, roulette.MonitorTaskKey);
+        return !displayType.IsNullOrWhitespace() &&
+               completionContentNames.Any(contentName => AreDailyTaskNamesEquivalent(displayType, contentName));
     }
 
     private static string[] GetCurrentAllianceRaidCompletionContentNames()
@@ -1629,7 +1650,7 @@ public class Database
             return true;
         }
 
-        return AreDailyTaskNamesEquivalent(roulette.RouletteType, taskName);
+        return AreDailyTaskNamesEquivalent(GetRouletteTypeDisplayName(roulette.RouletteType, roulette.MonitorTaskKey), taskName);
     }
 
     private static bool IsContentNameMatchedToWeeklyTask(string? contentName, IReadOnlyCollection<string> weeklyTaskContentNames)
@@ -1961,6 +1982,12 @@ public class Database
     {
         File.WriteAllText(TaskHistoryDbPath, JsonConvert.SerializeObject(TaskHistoryRoulettes));
         taskHistoryDbLastWriteTimeUtc = GetTaskHistoryDbLastWriteTimeUtc();
+    }
+
+    public static void ClearTaskHistory()
+    {
+        TaskHistoryRoulettes.Clear();
+        SaveTaskHistory();
     }
 
     public static Roulette? LoadFromPendingData()

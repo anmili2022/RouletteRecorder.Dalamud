@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Numerics;
 using System.Threading.Tasks;
 
@@ -29,6 +30,7 @@ public sealed class ConfigWindow : Window, IDisposable
 
     private string loginResponseMessage = string.Empty;
     private LoginStatus loginStatus = LoginStatus.Initial;
+    private static bool showClearConfirm;
 
     public ConfigWindow(Plugin plugin)
         : base($"设置窗口 v{typeof(Plugin).Assembly.GetName().Version}###rouletteRecorderConfigWindow", ImGuiWindowFlags.None)
@@ -53,6 +55,7 @@ public sealed class ConfigWindow : Window, IDisposable
         DrawSubscribedRouletteTypesSection();
         DrawDungeonLoggerSection();
         DrawStoredRecordsSection();
+        DrawLanguageSection();
     }
 
     private static void DrawHeader()
@@ -72,6 +75,36 @@ public sealed class ConfigWindow : Window, IDisposable
         if (ImGui.Button(Plugin.Localization.Localize("Open Save Folder")))
         {
             OpenSaveFolder();
+        }
+
+        ImGui.SameLine();
+        var recordAll = Plugin.Configuration.RecordAllDungeons;
+        if (ImGui.Checkbox(Plugin.Localization.Localize("Record All Dungeons"), ref recordAll))
+        {
+            Plugin.Configuration.RecordAllDungeons = recordAll;
+            Plugin.Configuration.Save();
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button(Plugin.Localization.Localize("Clear Records")))
+        {
+            ImGui.OpenPopup("##clearRecordsConfirm");
+        }
+
+        if (ImGui.BeginPopupModal("##clearRecordsConfirm", ref showClearConfirm, ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            ImGui.TextUnformatted(Plugin.Localization.Localize("Clear Records Confirm"));
+            if (ImGui.Button(Plugin.Localization.Localize("Yes")))
+            {
+                Database.ClearTaskHistory();
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.SameLine();
+            if (ImGui.Button(Plugin.Localization.Localize("No")))
+            {
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.EndPopup();
         }
 
         ImGui.Separator();
@@ -578,7 +611,6 @@ public sealed class ConfigWindow : Window, IDisposable
         ImGui.TextDisabled(string.Format(
             Plugin.Localization.Localize("Record Count Format"),
             Database.Roulettes.Count));
-        ImGui.TextDisabled(Database.DbPath);
 
         if (Database.Roulettes.Count == 0)
         {
@@ -588,52 +620,22 @@ public sealed class ConfigWindow : Window, IDisposable
             return;
         }
 
-        var tableFlags = ImGuiTableFlags.Borders |
-                         ImGuiTableFlags.RowBg |
-                         ImGuiTableFlags.Resizable |
-                         ImGuiTableFlags.ScrollX |
-                         ImGuiTableFlags.ScrollY |
-                         ImGuiTableFlags.SizingFixedFit;
-
-        if (ImGui.BeginTable("ConfigHistoryRecordsTable", 7, tableFlags, new Vector2(0, 280f)))
+        var sb = new StringBuilder();
+        foreach (var record in Database.Roulettes.AsEnumerable().Reverse().Take(100))
         {
-            ImGui.TableSetupColumn(Plugin.Localization.Localize("Content Name"));
-            ImGui.TableSetupColumn(Plugin.Localization.Localize("Task Type"));
-            ImGui.TableSetupColumn(Plugin.Localization.Localize("Duration"));
-            ImGui.TableSetupColumn(Plugin.Localization.Localize("Start Time"));
-            ImGui.TableSetupColumn(Plugin.Localization.Localize("End Time"));
-            ImGui.TableSetupColumn(Plugin.Localization.Localize("Job Name"));
-            ImGui.TableSetupColumn(Plugin.Localization.Localize("Completed"));
-            ImGui.TableHeadersRow();
-
-            foreach (var record in Database.Roulettes.AsEnumerable().Reverse())
-            {
-                ImGui.TableNextRow();
-
-                ImGui.TableNextColumn();
-                ImGui.TextWrapped(record.ContentName ?? "-");
-
-                ImGui.TableNextColumn();
-                ImGui.TextWrapped(Database.GetRouletteTypeDisplayName(record.RouletteType));
-
-                ImGui.TableNextColumn();
-                ImGui.TextUnformatted(record.GetDurationText(record.IsCompleted ? null : DateTime.Now));
-
-                ImGui.TableNextColumn();
-                ImGui.TextWrapped(record.GetStartTimeText());
-
-                ImGui.TableNextColumn();
-                ImGui.TextWrapped(record.GetEndTimeText());
-
-                ImGui.TableNextColumn();
-                ImGui.TextWrapped(record.JobName ?? "-");
-
-                ImGui.TableNextColumn();
-                ImGui.TextUnformatted(Plugin.Localization.Localize(record.IsCompleted ? "Yes" : "No"));
-            }
-
-            ImGui.EndTable();
+            sb.AppendLine(Plugin.Localization.Localize("Content Name") + "：" + (record.ContentName ?? "-"));
+            sb.AppendLine(Plugin.Localization.Localize("Task Type") + "：" + Database.GetRouletteTypeDisplayName(record.RouletteType));
+            sb.AppendLine(Plugin.Localization.Localize("Duration") + "：" + record.GetDurationText(record.IsCompleted ? null : DateTime.Now));
+            sb.AppendLine(Plugin.Localization.Localize("Start Time") + "：" + record.GetStartTimeText());
+            sb.AppendLine(Plugin.Localization.Localize("End Time") + "：" + record.GetEndTimeText());
+            sb.AppendLine(Plugin.Localization.Localize("Job Name") + "：" + (record.JobName ?? "-"));
+            sb.AppendLine(Plugin.Localization.Localize("Completed") + "：" + Plugin.Localization.Localize(record.IsCompleted ? "Yes" : "No"));
+            sb.AppendLine();
         }
+
+        var recordsText = sb.ToString().TrimEnd();
+        var recordsCopy = recordsText;
+        ImGui.InputTextMultiline("##subscribedRecordsText", ref recordsCopy, recordsCopy.Length + 1, new Vector2(-1, Math.Min(ImGui.CalcTextSize(recordsText).Y + 10, 400f)), ImGuiInputTextFlags.None);
 
         ImGui.Unindent();
         ImGui.Spacing();
@@ -662,66 +664,29 @@ public sealed class ConfigWindow : Window, IDisposable
             return;
         }
 
-        var tableFlags = ImGuiTableFlags.Borders |
-                         ImGuiTableFlags.RowBg |
-                         ImGuiTableFlags.Resizable |
-                         ImGuiTableFlags.ScrollX |
-                         ImGuiTableFlags.ScrollY |
-                         ImGuiTableFlags.SizingFixedFit;
-
-        if (ImGui.BeginTable("ConfigTaskHistoryRecordsTable", 10, tableFlags, new Vector2(0, 320f)))
+        var sb = new StringBuilder();
+        foreach (var record in Database.TaskHistoryRoulettes.AsEnumerable().Reverse().Take(100))
         {
-            ImGui.TableSetupColumn(Plugin.Localization.Localize("Content Name"));
-            ImGui.TableSetupColumn(Plugin.Localization.Localize("Task Type"));
-            ImGui.TableSetupColumn(Plugin.Localization.Localize("Start Time"));
-            ImGui.TableSetupColumn(Plugin.Localization.Localize("End Time"));
-            ImGui.TableSetupColumn(Plugin.Localization.Localize("Job Name"));
-            ImGui.TableSetupColumn(Plugin.Localization.Localize("Completed"));
-            ImGui.TableSetupColumn(Plugin.Localization.Localize("Player Name"));
-            ImGui.TableSetupColumn(Plugin.Localization.Localize("World"));
-            ImGui.TableSetupColumn(Plugin.Localization.Localize("Monitor Task Key"));
-            ImGui.TableSetupColumn(Plugin.Localization.Localize("Record Source"));
-            ImGui.TableHeadersRow();
-
-            foreach (var record in Database.TaskHistoryRoulettes.AsEnumerable().Reverse())
-            {
-                ImGui.TableNextRow();
-
-                ImGui.TableNextColumn();
-                ImGui.TextWrapped(record.ContentName ?? "-");
-
-                ImGui.TableNextColumn();
-                ImGui.TextWrapped(Database.GetRouletteTypeDisplayName(record.RouletteType, record.MonitorTaskKey));
-
-                ImGui.TableNextColumn();
-                ImGui.TextWrapped(GetTaskHistoryStartTimeText(record));
-
-                ImGui.TableNextColumn();
-                ImGui.TextWrapped(GetTaskHistoryEndTimeText(record));
-
-                ImGui.TableNextColumn();
-                ImGui.TextWrapped(record.JobName ?? "-");
-
-                ImGui.TableNextColumn();
-                ImGui.TextUnformatted(Plugin.Localization.Localize(record.IsCompleted ? "Yes" : "No"));
-
-                ImGui.TableNextColumn();
-                ImGui.TextWrapped(record.PlayerName ?? "-");
-
-                ImGui.TableNextColumn();
-                ImGui.TextWrapped(record.World ?? "-");
-
-                ImGui.TableNextColumn();
-                ImGui.TextWrapped(record.MonitorTaskKey ?? "-");
-
-                ImGui.TableNextColumn();
-                ImGui.TextWrapped(record.MonitorTaskKey.IsNullOrWhitespace()
-                    ? Plugin.Localization.Localize("Daily Roulette Record")
-                    : Plugin.Localization.Localize("Monitor Task Record"));
-            }
-
-            ImGui.EndTable();
+            sb.AppendLine(Plugin.Localization.Localize("Content Name") + "：" + (record.ContentName ?? "-"));
+            sb.AppendLine(Plugin.Localization.Localize("Task Type") + "：" + Database.GetRouletteTypeDisplayName(record.RouletteType, record.MonitorTaskKey));
+            sb.AppendLine(Plugin.Localization.Localize("Start Time") + "：" + GetTaskHistoryStartTimeText(record));
+            sb.AppendLine(Plugin.Localization.Localize("End Time") + "：" + GetTaskHistoryEndTimeText(record));
+            sb.AppendLine(Plugin.Localization.Localize("Job Name") + "：" + (record.JobName ?? "-"));
+            sb.AppendLine(Plugin.Localization.Localize("Completed") + "：" + Plugin.Localization.Localize(record.IsCompleted ? "Yes" : "No"));
+            sb.AppendLine(Plugin.Localization.Localize("Player Name") + "：" + (record.PlayerName ?? "-"));
+            sb.AppendLine(Plugin.Localization.Localize("World") + "：" + (record.World ?? "-"));
+            sb.AppendLine(Plugin.Localization.Localize("Monitor Task Key") + "：" + (record.MonitorTaskKey ?? "-"));
+            sb.AppendLine(Plugin.Localization.Localize("Record Source") + "：" + (record.MonitorTaskKey.IsNullOrWhitespace()
+                ? (string.Equals(record.RouletteType, record.ContentName, StringComparison.OrdinalIgnoreCase)
+                    ? Plugin.Localization.Localize("Direct Queue Record")
+                    : Plugin.Localization.Localize("Daily Roulette Record"))
+                : Plugin.Localization.Localize("Monitor Task Record")));
+            sb.AppendLine();
         }
+
+        var recordsText = sb.ToString().TrimEnd();
+        var recordsCopy = recordsText;
+        ImGui.InputTextMultiline("##taskHistoryRecordsText", ref recordsCopy, recordsCopy.Length + 1, new Vector2(-1, Math.Min(ImGui.CalcTextSize(recordsText).Y + 10, 400f)), ImGuiInputTextFlags.None);
 
         ImGui.Unindent();
         ImGui.Spacing();
@@ -877,5 +842,44 @@ public sealed class ConfigWindow : Window, IDisposable
             loginStatus = LoginStatus.Failed;
             loginResponseMessage = e.ToString();
         }
+    }
+
+    private static void DrawLanguageSection()
+    {
+        if (!ImGui.CollapsingHeader(Plugin.Localization.Localize("Language Settings")))
+        {
+            return;
+        }
+
+        ImGui.Indent();
+        ImGui.TextDisabled(Plugin.Localization.Localize("Language Settings Hint"));
+
+        var currentLang = Plugin.Configuration.Language;
+        var selectedZh = string.Equals(currentLang, "zh_CN", StringComparison.OrdinalIgnoreCase);
+        if (ImGui.RadioButton(Plugin.Localization.Localize("Language Chinese"), selectedZh))
+        {
+            if (!selectedZh)
+            {
+                Plugin.Configuration.Language = "zh_CN";
+                Plugin.Localization.SwitchLanguage("zh_CN");
+                Plugin.Configuration.Save();
+            }
+        }
+
+        var selectedEn = string.Equals(currentLang, "en", StringComparison.OrdinalIgnoreCase);
+        if (ImGui.RadioButton(Plugin.Localization.Localize("Language English"), selectedEn))
+        {
+            if (!selectedEn)
+            {
+                Plugin.Configuration.Language = "en";
+                Plugin.Localization.SwitchLanguage("en");
+                Plugin.Configuration.Save();
+            }
+        }
+
+        ImGui.Spacing();
+        ImGui.TextColored(ImGuiColors.DalamudGrey, Plugin.Localization.Localize("Localization Contribute Hint"));
+        ImGui.Unindent();
+        ImGui.Spacing();
     }
 }

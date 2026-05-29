@@ -66,6 +66,7 @@ public class Configuration : IPluginConfiguration
     public bool MinimalShowTodayMentorRouletteCount { get; set; } = true;
     public bool MinimalShowMentorRouletteTotalCount { get; set; } = false;
     public bool ShowCurrentTime { get; set; } = true;
+    public bool RecordAllDungeons { get; set; } = false;
     public bool EnableNoteWindow { get; set; } = false;
     public NoteScope NoteScopeMode { get; set; } = NoteScope.Public;
     public NoteBackgroundStyle NoteBackgroundStyleMode { get; set; } = NoteBackgroundStyle.Frosted;

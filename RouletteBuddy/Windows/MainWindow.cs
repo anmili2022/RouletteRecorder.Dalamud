@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using System.Numerics;
 using System.Threading.Tasks;
 
@@ -239,48 +240,24 @@ public sealed class MainWindow : Window, IDisposable
             return;
         }
 
-        var tableFlags = ImGuiTableFlags.Borders |
-                         ImGuiTableFlags.RowBg |
-                         ImGuiTableFlags.Resizable |
-                         ImGuiTableFlags.ScrollY |
-                         ImGuiTableFlags.SizingStretchProp;
-
-        if (!ImGui.BeginTable("RouletteRecorderHistoryTable", 5, tableFlags, new Vector2(0, GetHistoryTableHeight())))
+        var sb = new StringBuilder();
+        foreach (var roulette in Database.Roulettes.AsEnumerable().Reverse().Take(50))
         {
-            return;
+            sb.AppendLine(Plugin.Localization.Localize("Content Name") + "：" + (roulette.ContentName ?? "-"));
+            sb.AppendLine(Plugin.Localization.Localize("Task Type") + "：" + Database.GetRouletteTypeDisplayName(roulette.RouletteType));
+            sb.AppendLine(Plugin.Localization.Localize("Duration") + "：" + roulette.GetDurationText());
+            sb.AppendLine(Plugin.Localization.Localize("Start Time") + "：" + roulette.GetStartTimeText());
+            sb.AppendLine(Plugin.Localization.Localize("End Time") + "：" + roulette.GetEndTimeText());
+            sb.AppendLine();
         }
 
-        ImGui.TableSetupColumn(Plugin.Localization.Localize("Content Name"));
-        ImGui.TableSetupColumn(Plugin.Localization.Localize("Task Type"));
-        ImGui.TableSetupColumn(Plugin.Localization.Localize("Duration"));
-        ImGui.TableSetupColumn(Plugin.Localization.Localize("Start Time"));
-        ImGui.TableSetupColumn(Plugin.Localization.Localize("End Time"));
-        ImGui.TableHeadersRow();
-
-        foreach (var roulette in Database.Roulettes.AsEnumerable().Reverse())
-        {
-            ImGui.TableNextRow();
-
-            ImGui.TableNextColumn();
-            ImGui.TextWrapped(roulette.ContentName ?? "-");
-
-            ImGui.TableNextColumn();
-            ImGui.TextWrapped(Database.GetRouletteTypeDisplayName(roulette.RouletteType));
-
-            ImGui.TableNextColumn();
-            ImGui.TextUnformatted(roulette.GetDurationText());
-
-            ImGui.TableNextColumn();
-            ImGui.TextWrapped(roulette.GetStartTimeText());
-
-            ImGui.TableNextColumn();
-            ImGui.TextWrapped(roulette.GetEndTimeText());
-        }
-
-        ImGui.EndTable();
+        var recordsText = sb.ToString().TrimEnd();
+        var childHeight = Math.Min(GetHistoryChildHeight(), 600f);
+        var recordsCopy = recordsText;
+        ImGui.InputTextMultiline("##mainHistoryText", ref recordsCopy, recordsCopy.Length + 1, new Vector2(0, childHeight), ImGuiInputTextFlags.None);
     }
 
-    private static float GetHistoryTableHeight()
+    private static float GetHistoryChildHeight()
     {
         var availableHeight = ImGui.GetContentRegionAvail().Y - ImGui.GetFrameHeightWithSpacing() - 8f;
         return availableHeight > 0 ? availableHeight : 0;
@@ -504,7 +481,7 @@ public sealed class MainWindow : Window, IDisposable
         if (ImGui.IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows) &&
             ImGui.IsMouseClicked(ImGuiMouseButton.Right))
         {
-            plugin.OpenConfigUi();
+            plugin.ToggleConfigUi();
         }
     }
 
