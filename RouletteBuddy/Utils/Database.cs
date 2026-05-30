@@ -442,6 +442,11 @@ public class Database
 
     public static MonitorTaskStatus GetWeeklyMonitorTaskStatus(string taskKey, string taskName)
     {
+        if (!Plugin.ClientState.IsLoggedIn)
+        {
+            return UnknownStatus("Not logged in");
+        }
+
         return taskKey switch
         {
             WeeklyTaskWondrousTailsKey => GetWondrousTailsStatus(),
