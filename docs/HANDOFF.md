@@ -5,8 +5,8 @@
 > 当前分支：`master`
 > 插件名称：`日随伴侣`
 > 内部名：`RouletteBuddy`
-> 当前版本：`1.0.6.1`
-> 当前发布页：\`https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.6.1\`
+> 当前版本：`1.0.6.2`
+> 当前发布页：\`https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.6.2\`
 
 ## 1. 接手先看
 
@@ -175,10 +175,10 @@ RouletteBuddy/RouletteBuddy.csproj
 当前版本字段：
 
 ```xml
-<Version>1.0.6.1</Version>
-<AssemblyVersion>1.0.6.1</AssemblyVersion>
-<FileVersion>1.0.6.1</FileVersion>
-<InformationalVersion>1.0.6.1</InformationalVersion>
+<Version>1.0.6.2</Version>
+<AssemblyVersion>1.0.6.2</AssemblyVersion>
+<FileVersion>1.0.6.2</FileVersion>
+<InformationalVersion>1.0.6.2</InformationalVersion>
 ```
 
 仓库清单：
@@ -193,7 +193,7 @@ repo.json
 {
   "Name": "日随伴侣",
   "InternalName": "RouletteBuddy",
-  "AssemblyVersion": "1.0.6.1",
+  "AssemblyVersion": "1.0.6.2",
   "DalamudApiLevel": 15
 }
 ```
@@ -1157,14 +1157,14 @@ Vortice.Mathematics.dll
 - `.cso` shader 是嵌入资源，不会单独出现在 zip 中。
 - 当前 `latest.zip` 大小约 `623,459` 字节（约 `0.595 MB`）。
 - 当前发布包不应再出现 `TerraFX.Interop.Windows.dll`。
-- 本轮作为 `v1.0.6.1` 发布。
+- 本轮作为 `v1.0.6.2` 发布。
 
 ## 17. 2026-05-21 发布记录
 
 本轮发布版本：
 
 ```text
-1.0.6.1
+1.0.6.2
 ```
 
 主要发布内容：
@@ -1225,7 +1225,7 @@ latest.zip
 对应 Release：
 
 ```text
-https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.6.1
+https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.6.2
 ```
 
 ## 18. 2026-05-24 收工记录
