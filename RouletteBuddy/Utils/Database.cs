@@ -727,11 +727,6 @@ public class Database
         }
 
         var completionContentNames = GetCurrentAllianceRaidCompletionContentNames();
-        if (completionContentNames.Length == 0)
-        {
-            return false;
-        }
-
         var resetAt = GetCurrentWeeklyResetCycleStart();
         return TaskHistoryRoulettes.Any(roulette =>
             roulette.IsCompleted &&
@@ -743,6 +738,11 @@ public class Database
 
     private static bool IsCurrentAllianceRaidCompletionMatched(TaskHistoryRoulette roulette, IReadOnlyCollection<string> completionContentNames)
     {
+        if (IsCurrentAllianceRaidCompletionHistoryRecordMatched(roulette))
+        {
+            return true;
+        }
+
         if (completionContentNames.Count == 0)
         {
             return false;
@@ -757,6 +757,30 @@ public class Database
         var displayType = GetRouletteTypeDisplayName(roulette.RouletteType, roulette.MonitorTaskKey);
         return !displayType.IsNullOrWhitespace() &&
                completionContentNames.Any(contentName => AreDailyTaskNamesEquivalent(displayType, contentName));
+    }
+
+    private static bool IsCurrentAllianceRaidCompletionHistoryRecordMatched(TaskHistoryRoulette roulette)
+    {
+        if (roulette.ContentFinderConditionId is { } conditionId &&
+            GetWeeklyTaskConditions(WeeklyTaskAllianceRaid3Key).Any(condition => condition.RowId == conditionId))
+        {
+            return true;
+        }
+
+        return IsCurrentAllianceRaidCompletionHistoryName(roulette.ContentName) ||
+               IsCurrentAllianceRaidCompletionHistoryName(roulette.RouletteType) ||
+               string.Equals(roulette.MonitorTaskKey, WeeklyTaskAllianceRaid3Key, StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(roulette.MonitorTaskKey, WeeklyTaskCurrentAllianceRaidKey, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsCurrentAllianceRaidCompletionHistoryName(string? name)
+    {
+        if (name.IsNullOrWhitespace())
+        {
+            return false;
+        }
+
+        return ContainsNormalizedName(name, CurrentAllianceRaidCompletionNameKeyword);
     }
 
     private static string[] GetCurrentAllianceRaidCompletionContentNames()
@@ -1617,13 +1641,15 @@ public class Database
     public static bool IsTaskHistoryMonitorTaskCompletedForPlayer(string taskKey, string taskName, string playerName, string world, DateTime resetAt)
     {
         ReloadTaskHistoryIfChanged();
-        var weeklyTaskContentNames = IsWeeklyTaskKey(taskKey)
-            ? GetWeeklyTaskConditions(taskKey).Select(c => c.Name.ToString()).Where(n => !n.IsNullOrWhitespace()).ToArray()
+        var weeklyTaskConditions = IsWeeklyTaskKey(taskKey)
+            ? GetWeeklyTaskConditions(taskKey).ToArray()
             : [];
+        var weeklyTaskConditionIds = weeklyTaskConditions.Select(c => c.RowId).ToArray();
+        var weeklyTaskContentNames = weeklyTaskConditions.Select(c => c.Name.ToString()).Where(n => !n.IsNullOrWhitespace()).ToArray();
         if (playerName.IsNullOrWhitespace() || world.IsNullOrWhitespace()) return false;
         return TaskHistoryRoulettes.Any(roulette =>
             roulette.IsCompleted &&
-            IsTaskHistoryRecordMatched(roulette, taskKey, taskName, weeklyTaskContentNames) &&
+            IsTaskHistoryRecordMatched(roulette, taskKey, taskName, weeklyTaskConditionIds, weeklyTaskContentNames) &&
             string.Equals(roulette.PlayerName, playerName, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(roulette.World, world, StringComparison.OrdinalIgnoreCase) &&
             IsTaskHistoryRouletteInCurrentResetCycle(roulette, resetAt));
@@ -1634,7 +1660,6 @@ public class Database
         ReloadTaskHistoryIfChanged();
         if (playerName.IsNullOrWhitespace() || world.IsNullOrWhitespace()) return false;
         var completionContentNames = GetCurrentAllianceRaidCompletionContentNames();
-        if (completionContentNames.Length == 0) return false;
         var resetAt = GetCurrentWeeklyResetCycleStart();
         return TaskHistoryRoulettes.Any(roulette =>
             roulette.IsCompleted &&
@@ -1671,12 +1696,14 @@ public class Database
 
         var playerName = Plugin.GetPlayerName();
         var worldName = Plugin.GetPlayerWorldName();
-        var weeklyTaskContentNames = IsWeeklyTaskKey(taskKey)
-            ? GetWeeklyTaskConditions(taskKey)
-                .Select(condition => condition.Name.ToString())
-                .Where(name => !name.IsNullOrWhitespace())
-                .ToArray()
+        var weeklyTaskConditions = IsWeeklyTaskKey(taskKey)
+            ? GetWeeklyTaskConditions(taskKey).ToArray()
             : [];
+        var weeklyTaskConditionIds = weeklyTaskConditions.Select(c => c.RowId).ToArray();
+        var weeklyTaskContentNames = weeklyTaskConditions
+            .Select(condition => condition.Name.ToString())
+            .Where(name => !name.IsNullOrWhitespace())
+            .ToArray();
 
         if (playerName.IsNullOrWhitespace() || worldName.IsNullOrWhitespace())
         {
@@ -1685,7 +1712,7 @@ public class Database
 
         return TaskHistoryRoulettes.Any(roulette =>
             roulette.IsCompleted &&
-            IsTaskHistoryRecordMatched(roulette, taskKey, taskName, weeklyTaskContentNames) &&
+            IsTaskHistoryRecordMatched(roulette, taskKey, taskName, weeklyTaskConditionIds, weeklyTaskContentNames) &&
             string.Equals(roulette.PlayerName, playerName, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(roulette.World, worldName, StringComparison.OrdinalIgnoreCase) &&
             IsTaskHistoryRouletteInCurrentResetCycle(roulette, resetAt));
@@ -1695,10 +1722,16 @@ public class Database
         TaskHistoryRoulette roulette,
         string taskKey,
         string taskName,
+        IReadOnlyCollection<uint> weeklyTaskConditionIds,
         IReadOnlyCollection<string> weeklyTaskContentNames)
     {
         if (!roulette.MonitorTaskKey.IsNullOrWhitespace() &&
             string.Equals(roulette.MonitorTaskKey, taskKey, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (roulette.ContentFinderConditionId is { } conditionId && weeklyTaskConditionIds.Contains(conditionId))
         {
             return true;
         }
@@ -1947,6 +1980,12 @@ public class Database
         var candidates = Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()
             .Where(IsSavageRaidCondition)
             .ToArray();
+        if (candidates.Length == 0)
+        {
+            candidates = GetCurrentHighEndEightPlayerConditions()
+                .Where(condition => !IsCurrentUnrealTrial(condition))
+                .ToArray();
+        }
 
         if (candidates.Length == 0)
         {
@@ -2008,10 +2047,36 @@ public class Database
         }
 
         return condition is { IsInDutyFinder: true, PvP: false, QueueMaxPlayers: 8, HighEndDuty: true } &&
+               condition.ClassJobLevelRequired > 0 &&
                !IsCurrentUnrealTrial(condition) &&
                !name.Contains("绝", StringComparison.Ordinal) &&
                (name.Contains("零式", StringComparison.Ordinal) ||
-                name.Contains("Savage", StringComparison.OrdinalIgnoreCase));
+                name.Contains("Savage", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("Sadique", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("Episch", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static ContentFinderCondition[] GetCurrentHighEndEightPlayerConditions()
+    {
+        var candidates = Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()
+            .Where(condition => condition is { IsInDutyFinder: true, PvP: false, QueueMaxPlayers: 8, HighEndDuty: true } &&
+                                condition.ClassJobLevelRequired > 0 &&
+                                !condition.Name.ToString().IsNullOrWhitespace())
+            .ToArray();
+        if (candidates.Length == 0)
+        {
+            return [];
+        }
+
+        var maxExpansion = candidates.Max(candidate => candidate.RequiredExVersion.RowId);
+        var maxLevel = candidates
+            .Where(candidate => candidate.RequiredExVersion.RowId == maxExpansion)
+            .Max(candidate => candidate.ClassJobLevelRequired);
+
+        return candidates
+            .Where(condition => condition.RequiredExVersion.RowId == maxExpansion &&
+                                condition.ClassJobLevelRequired == maxLevel)
+            .ToArray();
     }
 
     private static bool IsCurrentSavageRaidCondition(ContentFinderCondition condition, string nameKeyword)

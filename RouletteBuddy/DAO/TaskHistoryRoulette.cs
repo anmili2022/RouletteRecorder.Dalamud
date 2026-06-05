@@ -38,14 +38,18 @@ public class TaskHistoryRoulette(string? contentName, string? rouletteType, bool
     [JsonProperty("monitorTaskKey", Order = 9)]
     public string? MonitorTaskKey { get; set; }
 
+    [JsonProperty("contentFinderConditionId", Order = 10)]
+    public uint? ContentFinderConditionId { get; set; }
+
     [JsonIgnore]
     public static TaskHistoryRoulette? Instance { get; private set; }
 
-    public static void Init(string? contentName = null, string? rouletteType = null, bool isCompleted = false, string? monitorTaskKey = null)
+    public static void Init(string? contentName = null, string? rouletteType = null, bool isCompleted = false, string? monitorTaskKey = null, uint? contentFinderConditionId = null)
     {
         Instance = new TaskHistoryRoulette(contentName, rouletteType, isCompleted)
         {
-            MonitorTaskKey = monitorTaskKey
+            MonitorTaskKey = monitorTaskKey,
+            ContentFinderConditionId = contentFinderConditionId
         };
     }
 

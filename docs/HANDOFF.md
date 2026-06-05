@@ -5,8 +5,8 @@
 > 当前分支：`master`
 > 插件名称：`日随伴侣`
 > 内部名：`RouletteBuddy`
-> 当前版本：`1.0.7.0`
-> 当前发布页：\`https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.7.0\`
+> 当前版本：`1.0.7.1`
+> 当前发布页：\`https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.7.1\`
 
 ## 1. 接手先看
 
@@ -176,10 +176,10 @@ RouletteBuddy/RouletteBuddy.csproj
 当前版本字段：
 
 ```xml
-<Version>1.0.7.0</Version>
-<AssemblyVersion>1.0.7.0</AssemblyVersion>
-<FileVersion>1.0.7.0</FileVersion>
-<InformationalVersion>1.0.7.0</InformationalVersion>
+<Version>1.0.7.1</Version>
+<AssemblyVersion>1.0.7.1</AssemblyVersion>
+<FileVersion>1.0.7.1</FileVersion>
+<InformationalVersion>1.0.7.1</InformationalVersion>
 ```
 
 仓库清单：
@@ -194,7 +194,7 @@ repo.json
 {
   "Name": "日随伴侣",
   "InternalName": "RouletteBuddy",
-  "AssemblyVersion": "1.0.7.0",
+  "AssemblyVersion": "1.0.7.1",
   "DalamudApiLevel": 15
 }
 ```
@@ -1537,7 +1537,35 @@ repo.json
 - 如果用户反馈某角色缺失，优先检查 `task_history.json` 是否有该角色的 `PlayerName` 和 `World`。
 - 如果用户反馈某任务完成状态不对，优先检查该条历史记录的 `IsCompleted`、结束时间和当前刷新周期。
 
-## 22. 下次建议
+## 22. 2026-06-05 收工记录（多角色概览补丁）
+
+本轮作为 `v1.0.7.1` 发布。
+
+### 22.1 主要变更
+
+- 多角色概览按钮文案从 `全角色` 改为 `多角色`。
+- `多角色` 按钮右侧新增 `便签` 按钮，复用 `/prr bq` 的便签开关逻辑。
+- 多角色概览的团本列改为按已监控团本显示 `已完成数/总数`，例如 `1/3`。
+- 多角色概览新增 `神典石` 和 `缓存日期` 两列。
+- 神典石通过当前登录角色读取并缓存，离线角色显示最后缓存值。
+- 缓存日期只显示日期，鼠标悬停显示完整缓存时间。
+- `Configuration.CharacterTomestoneCaches` 保存各角色神典石缓存。
+
+### 22.2 跨语言客户端修复
+
+- `TaskHistoryRoulette` 新增 `contentFinderConditionId` 字段。
+- 新历史记录会保存 `ContentFinderCondition.RowId`，后续周常匹配优先使用 RowId，不再依赖副本名语言。
+- 周常历史匹配在 `monitorTaskKey` 后优先匹配 `contentFinderConditionId`。
+- 团本第三巡行完成判断也会优先使用 `contentFinderConditionId`。
+- 零式当前候选改为结构化筛选：当前资料片、当前等级、高难、8 人本，再按排序取当前 4 层；中文 / 英文名称只作为兜底。
+
+### 22.3 注意事项
+
+- 旧历史记录没有 `contentFinderConditionId`，仍只能靠旧的名称匹配兜底。
+- 其他语言客户端从本版本开始的新历史记录会更稳定。
+- 神典石只能读取当前登录角色，离线角色必须登录过并刷新过概览后才有缓存。
+
+## 23. 下次建议
 
 - 如用户需要，增加 `/prr on` 和 `/prr off`。
 - 后续可把 `MinimalShow...` 迁移为通用 `Show...`，并做配置迁移。

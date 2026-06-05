@@ -37,6 +37,14 @@ public class DungeonLoggerConfig
     public string Password = string.Empty;
 }
 
+[Serializable]
+public class CharacterTomestoneCacheEntry
+{
+    public uint WeeklyAcquired { get; set; }
+    public uint WeeklyLimit { get; set; }
+    public string CachedAt { get; set; } = string.Empty;
+}
+
 
 [Serializable]
 public class Configuration : IPluginConfiguration
@@ -76,6 +84,7 @@ public class Configuration : IPluginConfiguration
     public string PublicNoteContent { get; set; } = string.Empty;
     public Dictionary<string, string> CharacterNoteContents { get; set; } = [];
     public HashSet<string> HiddenCharacterOverviewIdentities { get; set; } = [];
+    public Dictionary<string, CharacterTomestoneCacheEntry> CharacterTomestoneCaches { get; set; } = [];
 
     public bool SetSubscribedRouletteId(ContentRoulette roulette, bool selected)
     {

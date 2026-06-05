@@ -2,6 +2,7 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
+using FFXIVClientStructs.FFXIV.Client.Game;
 using RouletteBuddy.DAO;
 using RouletteBuddy.Utils;
 using System;
@@ -130,7 +131,7 @@ public sealed class MainWindow : Window, IDisposable
         }
     }
 
-    private static void DrawCurrentTaskTab()
+    private void DrawCurrentTaskTab()
     {
         var roulette = Roulette.Instance;
         var hasCurrentTask = roulette is { RouletteType: not null } || roulette is { ContentName: not null };
@@ -189,7 +190,7 @@ public sealed class MainWindow : Window, IDisposable
         DrawMinimalCurrentTaskTab();
     }
 
-    private static void DrawMinimalCurrentTaskTab()
+    private void DrawMinimalCurrentTaskTab()
     {
         var roulette = Roulette.Instance;
         var taskType = roulette?.RouletteType ?? Plugin.Localization.Localize("Unknown");
@@ -533,7 +534,7 @@ public sealed class MainWindow : Window, IDisposable
             {
                 ImGui.TextDisabled("暂无角色记录");
             }
-            else if (ImGui.BeginTable("characterOverviewTable", 6, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+            else if (ImGui.BeginTable("characterOverviewTable", 8, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
             {
                 string? identityToHide = null;
                 ImGui.TableSetupColumn("角色");
@@ -541,6 +542,8 @@ public sealed class MainWindow : Window, IDisposable
                 ImGui.TableSetupColumn("每日任务");
                 ImGui.TableSetupColumn("每周任务");
                 ImGui.TableSetupColumn("团本");
+                ImGui.TableSetupColumn("神典石");
+                ImGui.TableSetupColumn("缓存日期");
                 ImGui.TableSetupColumn("操作");
                 ImGui.TableHeadersRow();
 
@@ -557,6 +560,10 @@ public sealed class MainWindow : Window, IDisposable
                     DrawCharacterOverviewStatus(row.WeeklySummary, row.WeeklyDetail, row.WeeklyCompleted);
                     ImGui.TableNextColumn();
                     DrawCharacterOverviewStatus(row.AllianceSummary, row.AllianceDetail, row.AllianceCompleted);
+                    ImGui.TableNextColumn();
+                    DrawCharacterOverviewStatus(row.TomestoneSummary, row.TomestoneDetail, row.TomestoneCompleted);
+                    ImGui.TableNextColumn();
+                    DrawCharacterOverviewCacheDate(row.TomestoneCacheDate, row.TomestoneDetail);
                     ImGui.TableNextColumn();
                     if (ImGui.SmallButton($"隐藏##hideCharacterOverview-{row.Identity}"))
                     {
@@ -583,9 +590,9 @@ public sealed class MainWindow : Window, IDisposable
         ImGui.End();
     }
 
-    private static void DrawCharacterOverviewButton()
+    private void DrawCharacterOverviewButton()
     {
-        if (ImGui.SmallButton("全角色"))
+        if (ImGui.SmallButton("多角色"))
         {
             if (!showCharacterOverview)
             {
@@ -593,6 +600,12 @@ public sealed class MainWindow : Window, IDisposable
             }
 
             showCharacterOverview = !showCharacterOverview;
+        }
+
+        ImGui.SameLine();
+        if (ImGui.SmallButton("便签"))
+        {
+            plugin.ToggleNoteUi();
         }
     }
 
@@ -611,6 +624,23 @@ public sealed class MainWindow : Window, IDisposable
         else
         {
             ImGui.TextColored(completed ? ImGuiColors.HealerGreen : ImGuiColors.DalamudYellow, summary);
+        }
+
+        if (ImGui.IsItemHovered() && !detail.IsNullOrWhitespace())
+        {
+            DrawCharacterOverviewTooltip(detail);
+        }
+    }
+
+    private static void DrawCharacterOverviewCacheDate(string cacheDate, string detail)
+    {
+        if (cacheDate == "-")
+        {
+            ImGui.TextDisabled(cacheDate);
+        }
+        else
+        {
+            ImGui.TextUnformatted(cacheDate);
         }
 
         if (ImGui.IsItemHovered() && !detail.IsNullOrWhitespace())
@@ -656,6 +686,8 @@ public sealed class MainWindow : Window, IDisposable
         var currentPlayer = Plugin.GetPlayerName();
         var currentWorld = Plugin.GetPlayerWorldName();
 
+        UpdateCurrentCharacterTomestoneCache(currentPlayer, currentWorld);
+
         if (!string.IsNullOrWhiteSpace(currentPlayer) && !string.IsNullOrWhiteSpace(currentWorld) &&
             !characters.Any(c => string.Equals(c.PlayerName, currentPlayer, StringComparison.OrdinalIgnoreCase) &&
                                 string.Equals(c.World, currentWorld, StringComparison.OrdinalIgnoreCase)))
@@ -670,6 +702,9 @@ public sealed class MainWindow : Window, IDisposable
         var dailyTasks = Database.GetDailyTaskMonitorOptions().ToList();
         var weeklyTasks = Database.GetWeeklyTaskMonitorOptions()
             .Where(task => !Database.IsWeeklyAllianceRaidTaskKey(task.Key))
+            .ToList();
+        var allianceTasks = Database.GetWeeklyAllianceRaidTaskMonitorOptions()
+            .Where(task => Plugin.Configuration.MonitoredWeeklyTaskKeys.Contains(task.Key))
             .ToList();
         var weeklyResetAt = Database.GetCurrentWeeklyResetCycleStart();
 
@@ -693,9 +728,37 @@ public sealed class MainWindow : Window, IDisposable
                 weeklyDetail.AppendLine(done ? $"√ {name}" : $"x {name}");
             }
 
-            var allianceCompleted = Database.IsCurrentAllianceRaidCompletedForPlayer(playerName, world);
+            var allianceCompleted = 0;
+            var allianceDetail = new StringBuilder();
+            foreach (var (key, name) in allianceTasks)
+            {
+                var done = Database.IsTaskHistoryMonitorTaskCompletedForPlayer(key, name, playerName, world, weeklyResetAt);
+                if (done) allianceCompleted++;
+                allianceDetail.AppendLine(done ? $"√ {name}" : $"x {name}");
+            }
+
+            var identity = GetCharacterOverviewIdentity(playerName, world);
+            var tomestoneSummary = "-";
+            var tomestoneDetail = "暂无神典石缓存";
+            var tomestoneCacheDate = "-";
+            var tomestoneCompleted = false;
+            if (Plugin.Configuration.CharacterTomestoneCaches.TryGetValue(identity, out var tomestoneCache))
+            {
+                tomestoneSummary = $"{tomestoneCache.WeeklyAcquired}/{tomestoneCache.WeeklyLimit}";
+                tomestoneCompleted = tomestoneCache.WeeklyLimit > 0 && tomestoneCache.WeeklyAcquired >= tomestoneCache.WeeklyLimit;
+                if (DateTime.TryParse(tomestoneCache.CachedAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var cachedAt))
+                {
+                    tomestoneCacheDate = cachedAt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                    tomestoneDetail = $"本周：{tomestoneSummary}\n缓存时间：{cachedAt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)}";
+                }
+                else
+                {
+                    tomestoneDetail = $"本周：{tomestoneSummary}\n缓存时间：{tomestoneCache.CachedAt}";
+                }
+            }
+
             CharacterOverviewRows.Add(new CharacterOverviewRow(
-                GetCharacterOverviewIdentity(playerName, world),
+                identity,
                 playerName,
                 world,
                 dailyTasks.Count == 0 ? "-" : $"{dailyCompleted}/{dailyTasks.Count}",
@@ -704,12 +767,39 @@ public sealed class MainWindow : Window, IDisposable
                 weeklyTasks.Count == 0 ? "-" : $"{weeklyCompleted}/{weeklyTasks.Count}",
                 weeklyTasks.Count == 0 ? "暂无每周任务" : weeklyDetail.ToString(),
                 weeklyTasks.Count > 0 && weeklyCompleted == weeklyTasks.Count,
-                allianceCompleted ? "√" : "x",
-                allianceCompleted ? "已完成" : "未完成",
-                allianceCompleted));
+                allianceTasks.Count == 0 ? "-" : $"{allianceCompleted}/{allianceTasks.Count}",
+                allianceTasks.Count == 0 ? "暂无团本任务" : allianceDetail.ToString(),
+                allianceTasks.Count > 0 && allianceCompleted == allianceTasks.Count,
+                tomestoneSummary,
+                tomestoneDetail,
+                tomestoneCacheDate,
+                tomestoneCompleted));
         }
 
         characterOverviewCacheDirty = false;
+    }
+
+    private static unsafe void UpdateCurrentCharacterTomestoneCache(string? currentPlayer, string? currentWorld)
+    {
+        if (!Plugin.ClientState.IsLoggedIn || string.IsNullOrWhiteSpace(currentPlayer) || string.IsNullOrWhiteSpace(currentWorld))
+        {
+            return;
+        }
+
+        var inventoryManager = InventoryManager.Instance();
+        if (inventoryManager == null)
+        {
+            return;
+        }
+
+        var identity = GetCharacterOverviewIdentity(currentPlayer, currentWorld);
+        Plugin.Configuration.CharacterTomestoneCaches[identity] = new CharacterTomestoneCacheEntry
+        {
+            WeeklyAcquired = Convert.ToUInt32(inventoryManager->GetWeeklyAcquiredTomestoneCount(), CultureInfo.InvariantCulture),
+            WeeklyLimit = Convert.ToUInt32(InventoryManager.GetLimitedTomestoneWeeklyLimit(), CultureInfo.InvariantCulture),
+            CachedAt = DateTime.Now.ToString("O", CultureInfo.InvariantCulture)
+        };
+        Plugin.Configuration.Save();
     }
 
     private static string GetCharacterOverviewIdentity(string playerName, string world)
@@ -729,7 +819,11 @@ public sealed class MainWindow : Window, IDisposable
         bool WeeklyCompleted,
         string AllianceSummary,
         string AllianceDetail,
-        bool AllianceCompleted);
+        bool AllianceCompleted,
+        string TomestoneSummary,
+        string TomestoneDetail,
+        string TomestoneCacheDate,
+        bool TomestoneCompleted);
 
     public string PrintProperty(string messageTemplate, string? value)
     {

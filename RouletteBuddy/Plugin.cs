@@ -139,7 +139,7 @@ public sealed class Plugin : IDalamudPlugin
             if (Roulette.Instance.RouletteType != null) Roulette.Instance.Finish();
         }
 
-        UpdateTaskHistoryRouletteTerritory(currentContent?.Name.ToString());
+        UpdateTaskHistoryRouletteTerritory(currentContent?.Name.ToString(), currentContent?.RowId);
     }
 
     private static unsafe void OnCfPop(ContentFinderCondition condition)
@@ -148,6 +148,7 @@ public sealed class Plugin : IDalamudPlugin
         string? taskHistoryRouletteType = null;
         string? taskHistoryContentName = null;
         string? taskHistoryMonitorTaskKey = null;
+        uint? taskHistoryContentFinderConditionId = condition.RowId == 0 ? null : condition.RowId;
         var shouldSaveTaskHistory = false;
 
         var queueInfo = ContentsFinder.Instance()->QueueInfo;
@@ -190,7 +191,7 @@ public sealed class Plugin : IDalamudPlugin
         Roulette.Init(null, rouletteType);
         if (shouldSaveTaskHistory)
         {
-            TaskHistoryRoulette.Init(taskHistoryContentName, taskHistoryRouletteType, monitorTaskKey: taskHistoryMonitorTaskKey);
+            TaskHistoryRoulette.Init(taskHistoryContentName, taskHistoryRouletteType, monitorTaskKey: taskHistoryMonitorTaskKey, contentFinderConditionId: taskHistoryContentFinderConditionId);
         }
         else
         {
@@ -440,11 +441,16 @@ public sealed class Plugin : IDalamudPlugin
                localPlayer?.CurrentWorld.ValueNullable?.Name.ToString();
     }
 
-    private static void UpdateTaskHistoryRouletteTerritory(string? contentName)
+    private static void UpdateTaskHistoryRouletteTerritory(string? contentName, uint? contentFinderConditionId)
     {
         if (TaskHistoryRoulette.Instance == null)
         {
             return;
+        }
+
+        if (TaskHistoryRoulette.Instance.ContentFinderConditionId == null && contentFinderConditionId is > 0)
+        {
+            TaskHistoryRoulette.Instance.ContentFinderConditionId = contentFinderConditionId;
         }
 
         if (TaskHistoryRoulette.Instance.ContentName == null)
