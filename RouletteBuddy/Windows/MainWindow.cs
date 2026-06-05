@@ -1,6 +1,7 @@
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Windowing;
+using Dalamud.Utility;
 using RouletteBuddy.DAO;
 using RouletteBuddy.Utils;
 using System;
@@ -16,6 +17,9 @@ namespace RouletteBuddy.Windows;
 public sealed class MainWindow : Window, IDisposable
 {
     private readonly Plugin plugin;
+    private static bool showCharacterOverview;
+    private static bool characterOverviewCacheDirty = true;
+    private static readonly List<CharacterOverviewRow> CharacterOverviewRows = [];
 
     public MainWindow(Plugin plugin)
         : base("日随伴侣###rouletteRecorderMainWindow", ImGuiWindowFlags.NoCollapse)
@@ -49,6 +53,7 @@ public sealed class MainWindow : Window, IDisposable
 
         DrawRouletteCompletionTips();
         OpenConfigOnRightClick();
+        DrawCharacterOverviewPopup();
     }
 
     private void ApplyWindowOptions()
@@ -97,11 +102,6 @@ public sealed class MainWindow : Window, IDisposable
 
         ImGui.Separator();
         DrawFooterButtons(false);
-    }
-
-    private void DrawMinimalStyle()
-    {
-        DrawMinimalCurrentTaskTab();
     }
 
     private void DrawFooterButtons(bool compact)
@@ -163,6 +163,8 @@ public sealed class MainWindow : Window, IDisposable
         if (showCurrentTime)
         {
             ImGui.TextColored(ImGuiColors.DalamudWhite, GetCurrentTimeText());
+            ImGui.SameLine();
+            DrawCharacterOverviewButton();
         }
 
         if (showTodayCount)
@@ -179,6 +181,12 @@ public sealed class MainWindow : Window, IDisposable
                 Plugin.RefreshMentorRouletteAchievementProgress();
             }
         }
+
+    }
+
+    private void DrawMinimalStyle()
+    {
+        DrawMinimalCurrentTaskTab();
     }
 
     private static void DrawMinimalCurrentTaskTab()
@@ -219,6 +227,8 @@ public sealed class MainWindow : Window, IDisposable
         if (showCurrentTime)
         {
             ImGui.TextColored(ImGuiColors.DalamudWhite, GetCurrentTimeText());
+            ImGui.SameLine();
+            DrawCharacterOverviewButton();
         }
 
         if (showTodayCount)
@@ -484,6 +494,242 @@ public sealed class MainWindow : Window, IDisposable
             plugin.ToggleConfigUi();
         }
     }
+
+    private void DrawCharacterOverviewPopup()
+    {
+        if (!showCharacterOverview) return;
+
+        if (characterOverviewCacheDirty)
+        {
+            RebuildCharacterOverviewCache();
+        }
+
+        var open = true;
+        var visible = ImGui.Begin("多角色概览###CharacterOverview", ref open, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoCollapse);
+        if (!open)
+        {
+            showCharacterOverview = false;
+            ImGui.End();
+            return;
+        }
+
+        if (visible)
+        {
+            if (ImGui.SmallButton("刷新"))
+            {
+                RebuildCharacterOverviewCache();
+            }
+            ImGui.SameLine();
+            if (ImGui.SmallButton("显示全部"))
+            {
+                Plugin.Configuration.HiddenCharacterOverviewIdentities.Clear();
+                Plugin.Configuration.Save();
+                RebuildCharacterOverviewCache();
+            }
+            ImGui.SameLine();
+            ImGui.TextDisabled("悬停查看详情");
+
+            if (CharacterOverviewRows.Count == 0)
+            {
+                ImGui.TextDisabled("暂无角色记录");
+            }
+            else if (ImGui.BeginTable("characterOverviewTable", 6, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+            {
+                string? identityToHide = null;
+                ImGui.TableSetupColumn("角色");
+                ImGui.TableSetupColumn("服务器");
+                ImGui.TableSetupColumn("每日任务");
+                ImGui.TableSetupColumn("每周任务");
+                ImGui.TableSetupColumn("团本");
+                ImGui.TableSetupColumn("操作");
+                ImGui.TableHeadersRow();
+
+                foreach (var row in CharacterOverviewRows)
+                {
+                    ImGui.TableNextRow();
+                    ImGui.TableNextColumn();
+                    ImGui.Text(row.PlayerName);
+                    ImGui.TableNextColumn();
+                    ImGui.Text(row.World);
+                    ImGui.TableNextColumn();
+                    DrawCharacterOverviewStatus(row.DailySummary, row.DailyDetail, row.DailyCompleted);
+                    ImGui.TableNextColumn();
+                    DrawCharacterOverviewStatus(row.WeeklySummary, row.WeeklyDetail, row.WeeklyCompleted);
+                    ImGui.TableNextColumn();
+                    DrawCharacterOverviewStatus(row.AllianceSummary, row.AllianceDetail, row.AllianceCompleted);
+                    ImGui.TableNextColumn();
+                    if (ImGui.SmallButton($"隐藏##hideCharacterOverview-{row.Identity}"))
+                    {
+                        identityToHide = row.Identity;
+                    }
+                }
+
+                ImGui.EndTable();
+
+                if (identityToHide is not null)
+                {
+                    Plugin.Configuration.HiddenCharacterOverviewIdentities.Add(identityToHide);
+                    Plugin.Configuration.Save();
+                    RebuildCharacterOverviewCache();
+                }
+            }
+
+            if (ImGui.Button("关闭"))
+            {
+                showCharacterOverview = false;
+            }
+        }
+
+        ImGui.End();
+    }
+
+    private static void DrawCharacterOverviewButton()
+    {
+        if (ImGui.SmallButton("全角色"))
+        {
+            if (!showCharacterOverview)
+            {
+                characterOverviewCacheDirty = true;
+            }
+
+            showCharacterOverview = !showCharacterOverview;
+        }
+    }
+
+    private static void DrawCharacterOverviewStatus(string summary, string detail, bool completed)
+    {
+        if (summary == "-")
+        {
+            ImGui.TextDisabled(summary);
+        }
+        else if (!completed && TryParseCharacterOverviewProgress(summary, out var completedCount, out var totalCount) && completedCount > 0)
+        {
+            ImGui.TextColored(ImGuiColors.HealerGreen, completedCount.ToString(CultureInfo.InvariantCulture));
+            ImGui.SameLine(0, 0);
+            ImGui.TextUnformatted($"/{totalCount.ToString(CultureInfo.InvariantCulture)}");
+        }
+        else
+        {
+            ImGui.TextColored(completed ? ImGuiColors.HealerGreen : ImGuiColors.DalamudYellow, summary);
+        }
+
+        if (ImGui.IsItemHovered() && !detail.IsNullOrWhitespace())
+        {
+            DrawCharacterOverviewTooltip(detail);
+        }
+    }
+
+    private static bool TryParseCharacterOverviewProgress(string summary, out int completedCount, out int totalCount)
+    {
+        completedCount = 0;
+        totalCount = 0;
+        var parts = summary.Split('/', 2);
+        return parts.Length == 2 &&
+               int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out completedCount) &&
+               int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out totalCount);
+    }
+
+    private static void DrawCharacterOverviewTooltip(string detail)
+    {
+        ImGui.BeginTooltip();
+        foreach (var rawLine in detail.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var line = rawLine.TrimEnd('\r');
+            if (line.StartsWith("√ ", StringComparison.Ordinal))
+            {
+                ImGui.TextColored(ImGuiColors.HealerGreen, line);
+            }
+            else
+            {
+                ImGui.TextUnformatted(line);
+            }
+        }
+
+        ImGui.EndTooltip();
+    }
+
+    private static void RebuildCharacterOverviewCache()
+    {
+        CharacterOverviewRows.Clear();
+
+        var characters = Database.GetCharacterIdentities();
+        var currentPlayer = Plugin.GetPlayerName();
+        var currentWorld = Plugin.GetPlayerWorldName();
+
+        if (!string.IsNullOrWhiteSpace(currentPlayer) && !string.IsNullOrWhiteSpace(currentWorld) &&
+            !characters.Any(c => string.Equals(c.PlayerName, currentPlayer, StringComparison.OrdinalIgnoreCase) &&
+                                string.Equals(c.World, currentWorld, StringComparison.OrdinalIgnoreCase)))
+        {
+            characters.Insert(0, (currentPlayer!, currentWorld!));
+        }
+
+        characters = characters
+            .Where(character => !Plugin.Configuration.HiddenCharacterOverviewIdentities.Contains(GetCharacterOverviewIdentity(character.PlayerName, character.World)))
+            .ToList();
+
+        var dailyTasks = Database.GetDailyTaskMonitorOptions().ToList();
+        var weeklyTasks = Database.GetWeeklyTaskMonitorOptions()
+            .Where(task => !Database.IsWeeklyAllianceRaidTaskKey(task.Key))
+            .ToList();
+        var weeklyResetAt = Database.GetCurrentWeeklyResetCycleStart();
+
+        foreach (var (playerName, world) in characters)
+        {
+            var dailyCompleted = 0;
+            var dailyDetail = new StringBuilder();
+            foreach (var (_, name) in dailyTasks)
+            {
+                var done = Database.IsTaskHistoryRouletteCompletedForPlayer(name, playerName, world);
+                if (done) dailyCompleted++;
+                dailyDetail.AppendLine(done ? $"√ {name}" : $"x {name}");
+            }
+
+            var weeklyCompleted = 0;
+            var weeklyDetail = new StringBuilder();
+            foreach (var (key, name) in weeklyTasks)
+            {
+                var done = Database.IsTaskHistoryMonitorTaskCompletedForPlayer(key, name, playerName, world, weeklyResetAt);
+                if (done) weeklyCompleted++;
+                weeklyDetail.AppendLine(done ? $"√ {name}" : $"x {name}");
+            }
+
+            var allianceCompleted = Database.IsCurrentAllianceRaidCompletedForPlayer(playerName, world);
+            CharacterOverviewRows.Add(new CharacterOverviewRow(
+                GetCharacterOverviewIdentity(playerName, world),
+                playerName,
+                world,
+                dailyTasks.Count == 0 ? "-" : $"{dailyCompleted}/{dailyTasks.Count}",
+                dailyTasks.Count == 0 ? "暂无每日任务" : dailyDetail.ToString(),
+                dailyTasks.Count > 0 && dailyCompleted == dailyTasks.Count,
+                weeklyTasks.Count == 0 ? "-" : $"{weeklyCompleted}/{weeklyTasks.Count}",
+                weeklyTasks.Count == 0 ? "暂无每周任务" : weeklyDetail.ToString(),
+                weeklyTasks.Count > 0 && weeklyCompleted == weeklyTasks.Count,
+                allianceCompleted ? "√" : "x",
+                allianceCompleted ? "已完成" : "未完成",
+                allianceCompleted));
+        }
+
+        characterOverviewCacheDirty = false;
+    }
+
+    private static string GetCharacterOverviewIdentity(string playerName, string world)
+    {
+        return $"{playerName}@{world}";
+    }
+
+    private sealed record CharacterOverviewRow(
+        string Identity,
+        string PlayerName,
+        string World,
+        string DailySummary,
+        string DailyDetail,
+        bool DailyCompleted,
+        string WeeklySummary,
+        string WeeklyDetail,
+        bool WeeklyCompleted,
+        string AllianceSummary,
+        string AllianceDetail,
+        bool AllianceCompleted);
 
     public string PrintProperty(string messageTemplate, string? value)
     {

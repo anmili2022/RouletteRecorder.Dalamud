@@ -75,6 +75,7 @@ public class Configuration : IPluginConfiguration
     public float NoteTransparentWindowOpacity { get; set; } = 0.12f;
     public string PublicNoteContent { get; set; } = string.Empty;
     public Dictionary<string, string> CharacterNoteContents { get; set; } = [];
+    public HashSet<string> HiddenCharacterOverviewIdentities { get; set; } = [];
 
     public bool SetSubscribedRouletteId(ContentRoulette roulette, bool selected)
     {

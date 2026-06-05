@@ -1591,6 +1591,59 @@ public class Database
         return false;
     }
 
+    public static List<(string PlayerName, string World)> GetCharacterIdentities()
+    {
+        ReloadTaskHistoryIfChanged();
+        return TaskHistoryRoulettes
+            .Where(r => !r.PlayerName.IsNullOrWhitespace() && !r.World.IsNullOrWhitespace())
+            .Select(r => (r.PlayerName!, r.World!))
+            .Distinct()
+            .ToList();
+    }
+
+    public static bool IsTaskHistoryRouletteCompletedForPlayer(string rouletteName, string playerName, string world)
+    {
+        ReloadTaskHistoryIfChanged();
+        var resetAt = GetCurrentRouletteResetCycleStart();
+        if (playerName.IsNullOrWhitespace() || world.IsNullOrWhitespace()) return false;
+        return TaskHistoryRoulettes.Any(roulette =>
+            roulette.IsCompleted &&
+            AreDailyTaskNamesEquivalent(roulette.RouletteType, rouletteName) &&
+            string.Equals(roulette.PlayerName, playerName, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(roulette.World, world, StringComparison.OrdinalIgnoreCase) &&
+            IsTaskHistoryRouletteInCurrentResetCycle(roulette, resetAt));
+    }
+
+    public static bool IsTaskHistoryMonitorTaskCompletedForPlayer(string taskKey, string taskName, string playerName, string world, DateTime resetAt)
+    {
+        ReloadTaskHistoryIfChanged();
+        var weeklyTaskContentNames = IsWeeklyTaskKey(taskKey)
+            ? GetWeeklyTaskConditions(taskKey).Select(c => c.Name.ToString()).Where(n => !n.IsNullOrWhitespace()).ToArray()
+            : [];
+        if (playerName.IsNullOrWhitespace() || world.IsNullOrWhitespace()) return false;
+        return TaskHistoryRoulettes.Any(roulette =>
+            roulette.IsCompleted &&
+            IsTaskHistoryRecordMatched(roulette, taskKey, taskName, weeklyTaskContentNames) &&
+            string.Equals(roulette.PlayerName, playerName, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(roulette.World, world, StringComparison.OrdinalIgnoreCase) &&
+            IsTaskHistoryRouletteInCurrentResetCycle(roulette, resetAt));
+    }
+
+    public static bool IsCurrentAllianceRaidCompletedForPlayer(string playerName, string world)
+    {
+        ReloadTaskHistoryIfChanged();
+        if (playerName.IsNullOrWhitespace() || world.IsNullOrWhitespace()) return false;
+        var completionContentNames = GetCurrentAllianceRaidCompletionContentNames();
+        if (completionContentNames.Length == 0) return false;
+        var resetAt = GetCurrentWeeklyResetCycleStart();
+        return TaskHistoryRoulettes.Any(roulette =>
+            roulette.IsCompleted &&
+            IsCurrentAllianceRaidCompletionMatched(roulette, completionContentNames) &&
+            string.Equals(roulette.PlayerName, playerName, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(roulette.World, world, StringComparison.OrdinalIgnoreCase) &&
+            IsTaskHistoryRouletteInCurrentResetCycle(roulette, resetAt));
+    }
+
     public static bool IsTaskHistoryRouletteCompletedInCurrentResetCycle(string rouletteName)
     {
         ReloadTaskHistoryIfChanged();
@@ -1655,7 +1708,33 @@ public class Database
             return true;
         }
 
+        if (string.Equals(taskKey, WeeklyTaskUnrealTrialKey, StringComparison.OrdinalIgnoreCase) &&
+            IsUnrealTrialHistoryRecordMatched(roulette))
+        {
+            return true;
+        }
+
         return AreDailyTaskNamesEquivalent(GetRouletteTypeDisplayName(roulette.RouletteType, roulette.MonitorTaskKey), taskName);
+    }
+
+    private static bool IsUnrealTrialHistoryRecordMatched(TaskHistoryRoulette roulette)
+    {
+        return IsUnrealTrialHistoryName(roulette.ContentName) ||
+               IsUnrealTrialHistoryName(roulette.RouletteType) ||
+               string.Equals(roulette.MonitorTaskKey, WeeklyTaskUnrealTrialKey, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsUnrealTrialHistoryName(string? name)
+    {
+        if (name.IsNullOrWhitespace())
+        {
+            return false;
+        }
+
+        return ContainsNormalizedName(name, CurrentUnrealTrialNameKeyword) ||
+               name.Contains("幻巧战", StringComparison.Ordinal) ||
+               name.Contains("幻巧", StringComparison.Ordinal) ||
+               name.Contains("Unreal", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsContentNameMatchedToWeeklyTask(string? contentName, IReadOnlyCollection<string> weeklyTaskContentNames)
@@ -1815,7 +1894,7 @@ public class Database
             : resetAtToday.AddDays(-1);
     }
 
-    private static DateTime GetCurrentWeeklyResetCycleStart()
+    internal static DateTime GetCurrentWeeklyResetCycleStart()
     {
         var today = DateTime.Today;
         var daysSinceResetDay = ((int)today.DayOfWeek - WeeklyResetDay + 7) % 7;

@@ -1,12 +1,12 @@
 ﻿# 日随伴侣交接文档
 
-> 最后更新：2026-05-24
+> 最后更新：2026-06-05
 > 项目路径：`E:\git\RouletteBuddy`
 > 当前分支：`master`
 > 插件名称：`日随伴侣`
 > 内部名：`RouletteBuddy`
-> 当前版本：`1.0.6.2`
-> 当前发布页：\`https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.6.2\`
+> 当前版本：`1.0.7.0`
+> 当前发布页：\`https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.7.0\`
 
 ## 1. 接手先看
 
@@ -53,6 +53,7 @@ https://dalamud.dev/api/
 - 支持经典样式和极简样式悬浮窗。
 - 支持悬浮窗锁定、穿透、透明度、显示项开关。
 - 支持当前时间显示。
+- 支持多角色概览窗口，可从悬浮窗「全角色」按钮查看 `task_history.json` 中各角色的每日、每周和团本完成情况。
 - 支持今日导随次数和导随总次数显示。
 - 支持个人便签悬浮窗，可在公共便签和角色便签之间切换，内容变化自动保存，并支持 D3D11 真实磨砂背景 / 透明背景；磨砂强度和窗口透明度可调。
 - 设置窗口底部可查看“订阅任务记录”和“历史任务记录”。
@@ -175,10 +176,10 @@ RouletteBuddy/RouletteBuddy.csproj
 当前版本字段：
 
 ```xml
-<Version>1.0.6.2</Version>
-<AssemblyVersion>1.0.6.2</AssemblyVersion>
-<FileVersion>1.0.6.2</FileVersion>
-<InformationalVersion>1.0.6.2</InformationalVersion>
+<Version>1.0.7.0</Version>
+<AssemblyVersion>1.0.7.0</AssemblyVersion>
+<FileVersion>1.0.7.0</FileVersion>
+<InformationalVersion>1.0.7.0</InformationalVersion>
 ```
 
 仓库清单：
@@ -193,7 +194,7 @@ repo.json
 {
   "Name": "日随伴侣",
   "InternalName": "RouletteBuddy",
-  "AssemblyVersion": "1.0.6.2",
+  "AssemblyVersion": "1.0.7.0",
   "DalamudApiLevel": 15
 }
 ```
@@ -1470,7 +1471,73 @@ dotnet build
 0 个错误
 ```
 
-## 21. 下次建议
+## 21. 2026-06-05 收工记录（多角色概览）
+
+本轮新增多角色概览能力，并作为 `v1.0.7.0` 发布。
+
+### 21.1 主要变更
+
+- 悬浮窗当前时间右侧新增 `全角色` 按钮。
+- 点击后打开 `多角色概览` 小窗口。
+- 角色来源为 `task_history.json` 中历史记录的 `PlayerName + World` 去重集合。
+- 当前登录角色如果没有历史记录，会临时加入概览列表。
+- 概览表包含：角色、服务器、每日任务、每周任务、团本、操作。
+- 每日 / 每周任务以 `已完成数/总数` 展示。
+- 部分完成时，已完成数量显示绿色；全部完成时整格显示绿色。
+- 悬浮详情中已完成任务使用 `√` 并显示绿色，未完成任务使用 `x`。
+- 每行最右侧提供 `隐藏` 按钮，被隐藏角色保存到 `Configuration.HiddenCharacterOverviewIdentities`。
+- 顶部提供 `显示全部` 按钮，用于恢复所有隐藏角色。
+- 概览数据改为打开窗口或点击 `刷新` 时计算一次，避免每帧扫描历史记录导致 FPS 暴跌。
+
+### 21.2 关键实现
+
+涉及文件：
+
+```text
+RouletteBuddy/Configuration.cs
+RouletteBuddy/Utils/Database.cs
+RouletteBuddy/Windows/MainWindow.cs
+RouletteBuddy/RouletteBuddy.csproj
+docs/HANDOFF.md
+docs/RELEASE.md
+repo.json
+```
+
+`Database.cs` 新增按角色查询方法：
+
+- `GetCharacterIdentities()`
+- `IsTaskHistoryRouletteCompletedForPlayer(...)`
+- `IsTaskHistoryMonitorTaskCompletedForPlayer(...)`
+- `IsCurrentAllianceRaidCompletedForPlayer(...)`
+
+`MainWindow.cs` 新增：
+
+- `DrawCharacterOverviewButton()`
+- `DrawCharacterOverviewPopup()`
+- `RebuildCharacterOverviewCache()`
+- `CharacterOverviewRow`
+
+### 21.3 幻巧战修复
+
+本轮同时修复幻巧战历史匹配过窄的问题。
+
+此前角色概览只按历史记录匹配，若历史副本名类似 `幻巧神龙歼灭战`，原有 `神龙幻巧战` / `幻巧战` 匹配可能失败。现在幻巧战历史匹配会接受：
+
+- 当前固定关键词 `神龙幻巧战`
+- `幻巧战`
+- 任意包含 `幻巧` 的历史名称
+- `Unreal`
+- `weekly:unrealTrial` 的 `MonitorTaskKey`
+
+### 21.4 注意事项
+
+- 多角色概览只基于本插件已记录的历史数据，不读取账号角色列表。
+- 没有任何历史记录的非当前角色不会出现在列表中。
+- 隐藏角色只影响多角色概览显示，不删除历史记录。
+- 如果用户反馈某角色缺失，优先检查 `task_history.json` 是否有该角色的 `PlayerName` 和 `World`。
+- 如果用户反馈某任务完成状态不对，优先检查该条历史记录的 `IsCompleted`、结束时间和当前刷新周期。
+
+## 22. 下次建议
 
 - 如用户需要，增加 `/prr on` 和 `/prr off`。
 - 后续可把 `MinimalShow...` 迁移为通用 `Show...`，并做配置迁移。
