@@ -42,6 +42,8 @@ public class CharacterTomestoneCacheEntry
 {
     public uint WeeklyAcquired { get; set; }
     public uint WeeklyLimit { get; set; }
+    public uint MemoryCount { get; set; }
+    public uint MathematicsCount { get; set; }
     public string CachedAt { get; set; } = string.Empty;
 }
 

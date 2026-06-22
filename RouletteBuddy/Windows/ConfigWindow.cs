@@ -31,6 +31,9 @@ public sealed class ConfigWindow : Window, IDisposable
     private string loginResponseMessage = string.Empty;
     private LoginStatus loginStatus = LoginStatus.Initial;
     private static bool showClearConfirm;
+    private static string subscribedRecordsSearch = string.Empty;
+    private static string taskHistoryPlayerSearch = string.Empty;
+    private static string taskHistoryTaskSearch = string.Empty;
 
     public ConfigWindow(Plugin plugin)
         : base($"设置窗口 v{typeof(Plugin).Assembly.GetName().Version}###rouletteRecorderConfigWindow", ImGuiWindowFlags.None)
@@ -608,11 +611,17 @@ public sealed class ConfigWindow : Window, IDisposable
         }
 
         ImGui.Indent();
+        DrawRecordsSearchBar("##subscribedRecordsSearch", "Search task name", ref subscribedRecordsSearch);
+
+        var filteredRecords = Database.Roulettes
+            .Where(record => MatchesSubscribedRecord(record, subscribedRecordsSearch))
+            .ToList();
+
         ImGui.TextDisabled(string.Format(
             Plugin.Localization.Localize("Record Count Format"),
-            Database.Roulettes.Count));
+            filteredRecords.Count));
 
-        if (Database.Roulettes.Count == 0)
+        if (filteredRecords.Count == 0)
         {
             ImGui.TextDisabled(Plugin.Localization.Localize("No history records"));
             ImGui.Unindent();
@@ -621,7 +630,7 @@ public sealed class ConfigWindow : Window, IDisposable
         }
 
         var sb = new StringBuilder();
-        foreach (var record in Database.Roulettes.AsEnumerable().Reverse().Take(100))
+        foreach (var record in filteredRecords.AsEnumerable().Reverse().Take(100))
         {
             sb.AppendLine(Plugin.Localization.Localize("Content Name") + "：" + (record.ContentName ?? "-"));
             sb.AppendLine(Plugin.Localization.Localize("Task Type") + "：" + Database.GetRouletteTypeDisplayName(record.RouletteType));
@@ -651,12 +660,19 @@ public sealed class ConfigWindow : Window, IDisposable
         }
 
         ImGui.Indent();
+        DrawRecordsSearchBar("##taskHistoryPlayerSearch", "Search player", ref taskHistoryPlayerSearch);
+        DrawRecordsSearchBar("##taskHistoryTaskSearch", "Search task name", ref taskHistoryTaskSearch);
+
+        var filteredRecords = Database.TaskHistoryRoulettes
+            .Where(record => MatchesTaskHistoryRecord(record, taskHistoryPlayerSearch, taskHistoryTaskSearch))
+            .ToList();
+
         ImGui.TextDisabled(string.Format(
             Plugin.Localization.Localize("Record Count Format"),
-            Database.TaskHistoryRoulettes.Count));
+            filteredRecords.Count));
         ImGui.TextDisabled(Database.TaskHistoryDbPath);
 
-        if (Database.TaskHistoryRoulettes.Count == 0)
+        if (filteredRecords.Count == 0)
         {
             ImGui.TextDisabled(Plugin.Localization.Localize("No history records"));
             ImGui.Unindent();
@@ -665,7 +681,7 @@ public sealed class ConfigWindow : Window, IDisposable
         }
 
         var sb = new StringBuilder();
-        foreach (var record in Database.TaskHistoryRoulettes.AsEnumerable().Reverse().Take(100))
+        foreach (var record in filteredRecords.AsEnumerable().Reverse().Take(100))
         {
             sb.AppendLine(Plugin.Localization.Localize("Content Name") + "：" + (record.ContentName ?? "-"));
             sb.AppendLine(Plugin.Localization.Localize("Task Type") + "：" + Database.GetRouletteTypeDisplayName(record.RouletteType, record.MonitorTaskKey));
@@ -690,6 +706,47 @@ public sealed class ConfigWindow : Window, IDisposable
 
         ImGui.Unindent();
         ImGui.Spacing();
+    }
+
+    private static void DrawRecordsSearchBar(string idSuffix, string hintKey, ref string value)
+    {
+        ImGui.SetNextItemWidth(-120f);
+        ImGui.InputTextWithHint($"{idSuffix}##search", Plugin.Localization.Localize(hintKey), ref value, 200);
+        ImGui.SameLine();
+        if (ImGui.SmallButton($"清除{idSuffix}"))
+        {
+            value = string.Empty;
+        }
+    }
+
+    private static bool MatchesSubscribedRecord(Roulette record, string searchText)
+    {
+        if (searchText.IsNullOrWhitespace())
+        {
+            return true;
+        }
+
+        return ContainsText(record.ContentName, searchText) ||
+               ContainsText(Database.GetRouletteTypeDisplayName(record.RouletteType), searchText);
+    }
+
+    private static bool MatchesTaskHistoryRecord(TaskHistoryRoulette record, string playerSearchText, string taskSearchText)
+    {
+        var playerMatches = playerSearchText.IsNullOrWhitespace() ||
+                            ContainsText(record.PlayerName, playerSearchText) ||
+                            ContainsText(record.World, playerSearchText);
+        var taskMatches = taskSearchText.IsNullOrWhitespace() ||
+                          ContainsText(record.ContentName, taskSearchText) ||
+                          ContainsText(Database.GetRouletteTypeDisplayName(record.RouletteType, record.MonitorTaskKey), taskSearchText) ||
+                          ContainsText(record.MonitorTaskKey, taskSearchText);
+
+        return playerMatches && taskMatches;
+    }
+
+    private static bool ContainsText(string? value, string searchText)
+    {
+        return !value.IsNullOrWhitespace() &&
+               value.Contains(searchText, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string GetTaskHistoryStartTimeText(TaskHistoryRoulette record)

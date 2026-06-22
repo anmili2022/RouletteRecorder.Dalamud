@@ -3,6 +3,7 @@ using Dalamud.Interface.Colors;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using Lumina.Excel.Sheets;
 using RouletteBuddy.DAO;
 using RouletteBuddy.Utils;
 using System;
@@ -534,7 +535,7 @@ public sealed class MainWindow : Window, IDisposable
             {
                 ImGui.TextDisabled("暂无角色记录");
             }
-            else if (ImGui.BeginTable("characterOverviewTable", 8, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+            else if (ImGui.BeginTable("characterOverviewTable", 9, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
             {
                 string? identityToHide = null;
                 ImGui.TableSetupColumn("角色");
@@ -542,7 +543,8 @@ public sealed class MainWindow : Window, IDisposable
                 ImGui.TableSetupColumn("每日任务");
                 ImGui.TableSetupColumn("每周任务");
                 ImGui.TableSetupColumn("团本");
-                ImGui.TableSetupColumn("神典石");
+                ImGui.TableSetupColumn("记忆神典石");
+                ImGui.TableSetupColumn("数理神典石");
                 ImGui.TableSetupColumn("缓存日期");
                 ImGui.TableSetupColumn("操作");
                 ImGui.TableHeadersRow();
@@ -562,6 +564,8 @@ public sealed class MainWindow : Window, IDisposable
                     DrawCharacterOverviewStatus(row.AllianceSummary, row.AllianceDetail, row.AllianceCompleted);
                     ImGui.TableNextColumn();
                     DrawCharacterOverviewStatus(row.TomestoneSummary, row.TomestoneDetail, row.TomestoneCompleted);
+                    ImGui.TableNextColumn();
+                    DrawCharacterOverviewCacheDate(row.MathematicsTomestoneSummary, row.TomestoneDetail);
                     ImGui.TableNextColumn();
                     DrawCharacterOverviewCacheDate(row.TomestoneCacheDate, row.TomestoneDetail);
                     ImGui.TableNextColumn();
@@ -739,24 +743,25 @@ public sealed class MainWindow : Window, IDisposable
 
             var identity = GetCharacterOverviewIdentity(playerName, world);
             var tomestoneSummary = "-";
+            var mathematicsTomestoneSummary = "-";
             var tomestoneDetail = "暂无神典石缓存";
             var tomestoneCacheDate = "-";
             var tomestoneCompleted = false;
             if (Plugin.Configuration.CharacterTomestoneCaches.TryGetValue(identity, out var tomestoneCache))
             {
-                tomestoneSummary = $"{tomestoneCache.WeeklyAcquired}/{tomestoneCache.WeeklyLimit}";
+                tomestoneSummary = $"{tomestoneCache.WeeklyAcquired}/{tomestoneCache.WeeklyLimit}-{tomestoneCache.MemoryCount}";
+                mathematicsTomestoneSummary = $"{tomestoneCache.MathematicsCount}/2000";
                 tomestoneCompleted = tomestoneCache.WeeklyLimit > 0 && tomestoneCache.WeeklyAcquired >= tomestoneCache.WeeklyLimit;
                 if (DateTime.TryParse(tomestoneCache.CachedAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var cachedAt))
                 {
                     tomestoneCacheDate = cachedAt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-                    tomestoneDetail = $"本周：{tomestoneSummary}\n缓存时间：{cachedAt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)}";
+                    tomestoneDetail = $"记忆神典石：{tomestoneSummary}\n数理神典石：{mathematicsTomestoneSummary}\n缓存时间：{cachedAt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)}";
                 }
                 else
                 {
-                    tomestoneDetail = $"本周：{tomestoneSummary}\n缓存时间：{tomestoneCache.CachedAt}";
+                    tomestoneDetail = $"记忆神典石：{tomestoneSummary}\n数理神典石：{mathematicsTomestoneSummary}\n缓存时间：{tomestoneCache.CachedAt}";
                 }
             }
-
             CharacterOverviewRows.Add(new CharacterOverviewRow(
                 identity,
                 playerName,
@@ -771,6 +776,7 @@ public sealed class MainWindow : Window, IDisposable
                 allianceTasks.Count == 0 ? "暂无团本任务" : allianceDetail.ToString(),
                 allianceTasks.Count > 0 && allianceCompleted == allianceTasks.Count,
                 tomestoneSummary,
+                mathematicsTomestoneSummary,
                 tomestoneDetail,
                 tomestoneCacheDate,
                 tomestoneCompleted));
@@ -797,9 +803,24 @@ public sealed class MainWindow : Window, IDisposable
         {
             WeeklyAcquired = Convert.ToUInt32(inventoryManager->GetWeeklyAcquiredTomestoneCount(), CultureInfo.InvariantCulture),
             WeeklyLimit = Convert.ToUInt32(InventoryManager.GetLimitedTomestoneWeeklyLimit(), CultureInfo.InvariantCulture),
+            MemoryCount = GetCurrentTomestoneCount(inventoryManager, 3),
+            MathematicsCount = GetCurrentTomestoneCount(inventoryManager, 2),
             CachedAt = DateTime.Now.ToString("O", CultureInfo.InvariantCulture)
         };
         Plugin.Configuration.Save();
+    }
+
+    private static unsafe uint GetCurrentTomestoneCount(InventoryManager* inventoryManager, uint tomestoneCategory)
+    {
+        var tomestoneItemId = Plugin.DataManager.GetExcelSheet<TomestonesItem>()
+            .FirstOrDefault(tomestone => tomestone.Tomestones.RowId == tomestoneCategory)
+            .Item.RowId;
+        if (tomestoneItemId == 0)
+        {
+            return 0;
+        }
+
+        return Convert.ToUInt32(inventoryManager->GetInventoryItemCount(tomestoneItemId), CultureInfo.InvariantCulture);
     }
 
     private static string GetCharacterOverviewIdentity(string playerName, string world)
@@ -821,6 +842,7 @@ public sealed class MainWindow : Window, IDisposable
         string AllianceDetail,
         bool AllianceCompleted,
         string TomestoneSummary,
+        string MathematicsTomestoneSummary,
         string TomestoneDetail,
         string TomestoneCacheDate,
         bool TomestoneCompleted);

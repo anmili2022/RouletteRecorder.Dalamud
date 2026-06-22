@@ -1,9 +1,9 @@
 ﻿# 日随伴侣发布流程
 
 > 最后更新：2026-06-05
-> 当前版本：`1.0.7.1`
+> 当前版本：`1.0.7.2`
 > 当前仓库：`https://github.com/anmili2022/RouletteRecorder.Dalamud`
-> 当前 Release：`https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.7.1`
+> 当前 Release：`https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.7.2`
 
 本文档用于下次快速发布，尽量按顺序复制执行。
 
@@ -52,20 +52,20 @@ gh auth status
 当前版本是：
 
 ```text
-1.0.7.1
+1.0.7.2
 ```
 
 下次普通功能更新建议使用：
 
 ```text
-1.0.7.1
+1.0.7.2
 ```
 
 以下命令里的版本号按实际发布版本替换：
 
 ```powershell
-$oldVersion = "1.0.7.1"
-$newVersion = "1.0.7.1"
+$oldVersion = "1.0.7.2"
+$newVersion = "1.0.7.2"
 ```
 
 ## 3. 修改版本号
@@ -79,17 +79,17 @@ RouletteBuddy/RouletteBuddy.csproj
 可手动修改这四项：
 
 ```xml
-<Version>1.0.7.1</Version>
-<AssemblyVersion>1.0.7.1</AssemblyVersion>
-<FileVersion>1.0.7.1</FileVersion>
-<InformationalVersion>1.0.7.1</InformationalVersion>
+<Version>1.0.7.2</Version>
+<AssemblyVersion>1.0.7.2</AssemblyVersion>
+<FileVersion>1.0.7.2</FileVersion>
+<InformationalVersion>1.0.7.2</InformationalVersion>
 ```
 
 也可以用命令替换：
 
 ```powershell
-$oldVersion = "1.0.7.1"
-$newVersion = "1.0.7.1"
+$oldVersion = "1.0.7.2"
+$newVersion = "1.0.7.2"
 (Get-Content -Encoding UTF8 RouletteBuddy\RouletteBuddy.csproj) -replace [regex]::Escape($oldVersion), $newVersion | Set-Content -Encoding UTF8 RouletteBuddy\RouletteBuddy.csproj
 (Get-Content -Encoding UTF8 docs\HANDOFF.md) -replace [regex]::Escape($oldVersion), $newVersion | Set-Content -Encoding UTF8 docs\HANDOFF.md
 (Get-Content -Encoding UTF8 docs\RELEASE.md) -replace [regex]::Escape($oldVersion), $newVersion | Set-Content -Encoding UTF8 docs\RELEASE.md
@@ -146,7 +146,7 @@ Get-Content -Encoding UTF8 output\RouletteBuddy.json
 ```json
 "Name": "日随伴侣"
 "InternalName": "RouletteBuddy"
-"AssemblyVersion": "1.0.7.1"
+"AssemblyVersion": "1.0.7.2"
 "DalamudApiLevel": 15
 ```
 
@@ -181,7 +181,7 @@ tar -xOf output\RouletteBuddy\latest.zip RouletteBuddy.json
 
 ```json
 "InternalName": "RouletteBuddy"
-"AssemblyVersion": "1.0.7.1"
+"AssemblyVersion": "1.0.7.2"
 ```
 
 ## 6. 更新 repo.json
@@ -191,7 +191,7 @@ tar -xOf output\RouletteBuddy\latest.zip RouletteBuddy.json
 可以用下面命令自动更新：
 
 ```powershell
-$newVersion = "1.0.7.1"
+$newVersion = "1.0.7.2"
 $repo = Get-Content -Raw -Encoding UTF8 repo.json | ConvertFrom-Json
 $link = "https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/download/v$newVersion/latest.zip"
 $repo[0].AssemblyVersion = $newVersion
@@ -219,7 +219,7 @@ output/release_notes.md
 示例命令：
 
 ```powershell
-Set-Content -Encoding UTF8 output\release_notes.md "# 日随伴侣 v1.0.7.1`n`n## 主要更新`n`n- 写这里。`n- 写这里。`n`n## 构建产物`n`n- latest.zip：Dalamud 插件发布包。"
+Set-Content -Encoding UTF8 output\release_notes.md "# 日随伴侣 v1.0.7.2`n`n## 主要更新`n`n- 写这里。`n- 写这里。`n`n## 构建产物`n`n- latest.zip：Dalamud 插件发布包。"
 ```
 
 如果内容较多，也可以直接用编辑器打开：
@@ -241,20 +241,20 @@ git diff --stat
 
 ```powershell
 git add .
-git commit -m "chore: release v1.0.7.1"
+git commit -m "chore: release v1.0.7.2"
 ```
 
 打标签：
 
 ```powershell
-git tag -a v1.0.7.1 -m "日随伴侣 v1.0.7.1"
+git tag -a v1.0.7.2 -m "日随伴侣 v1.0.7.2"
 ```
 
 推送：
 
 ```powershell
 git push origin master
-git push origin v1.0.7.1
+git push origin v1.0.7.2
 ```
 
 ## 9. 创建 GitHub Release
@@ -262,19 +262,19 @@ git push origin v1.0.7.1
 推荐直接上传本地构建好的发布包：
 
 ```powershell
-gh release create v1.0.7.1 output\RouletteBuddy\latest.zip --title "日随伴侣 v1.0.7.1" --notes-file output\release_notes.md
+gh release create v1.0.7.2 output\RouletteBuddy\latest.zip --title "日随伴侣 v1.0.7.2" --notes-file output\release_notes.md
 ```
 
 如果 Release 已经存在，需要覆盖上传包：
 
 ```powershell
-gh release upload --clobber v1.0.7.1 output\RouletteBuddy\latest.zip
+gh release upload --clobber v1.0.7.2 output\RouletteBuddy\latest.zip
 ```
 
 查看发布结果：
 
 ```powershell
-gh release view v1.0.7.1 --json tagName,name,url,assets,publishedAt
+gh release view v1.0.7.2 --json tagName,name,url,assets,publishedAt
 ```
 
 应能看到资产：
@@ -294,7 +294,7 @@ https://github.com/anmili2022/RouletteRecorder.Dalamud/releases
 确认下载链接：
 
 ```text
-https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/download/v1.0.7.1/latest.zip
+https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/download/v1.0.7.2/latest.zip
 ```
 
 确认本地干净：
@@ -320,7 +320,7 @@ git tag --points-at HEAD
 应包含：
 
 ```text
-v1.0.7.1
+v1.0.7.2
 ```
 
 ## 11. GitHub Actions 说明
@@ -362,4 +362,5 @@ v1.0.7.1
 ```text
 https://raw.githubusercontent.com/anmili2022/RouletteRecorder.Dalamud/refs/heads/master/repo.json
 ```
+
 
