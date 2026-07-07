@@ -177,11 +177,6 @@ public sealed class MainWindow : Window, IDisposable
         if (showTotalCount)
         {
             DrawProperty("Mentor Roulette Total Count", Plugin.GetMentorRouletteAchievementProgressText());
-            ImGui.SameLine();
-            if (ImGui.SmallButton(Plugin.Localization.Localize("Refresh Achievement Progress")))
-            {
-                Plugin.RefreshMentorRouletteAchievementProgress();
-            }
         }
 
     }

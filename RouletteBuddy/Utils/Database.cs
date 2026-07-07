@@ -119,6 +119,8 @@ public class Database
     public static List<Roulette> Roulettes { get; private set; } = [];
     public static List<TaskHistoryRoulette> TaskHistoryRoulettes { get; private set; } = [];
     private static DateTime? taskHistoryDbLastWriteTimeUtc;
+    private static DateTime todayMentorRouletteCountResetCycleStart = DateTime.MinValue;
+    private static int? todayMentorRouletteCount;
 
     public static void Load()
     {
@@ -132,6 +134,8 @@ public class Database
         {
             Roulettes = deserialized;
         }
+
+        InvalidateTodayMentorRouletteCount();
 
         LoadTaskHistoryRecords();
     }
@@ -190,6 +194,11 @@ public class Database
     public static void InsertRoulette(Roulette roulette)
     {
         Roulettes.Add(roulette);
+        InvalidateTodayMentorRouletteCount();
+        if (roulette.IsCompleted && IsMentorRouletteName(roulette.RouletteType))
+        {
+            Plugin.RefreshMentorRouletteAchievementProgressForResetCycle(GetCurrentRouletteResetCycleStart(), true);
+        }
         Save();
     }
 
@@ -201,24 +210,42 @@ public class Database
 
     public static int GetTodayMentorRouletteCount()
     {
+        var resetCycleStart = GetCurrentRouletteResetCycleStart();
+        if (todayMentorRouletteCount != null && resetCycleStart == todayMentorRouletteCountResetCycleStart)
+        {
+            return todayMentorRouletteCount.Value;
+        }
+
+        if (todayMentorRouletteCountResetCycleStart != DateTime.MinValue && resetCycleStart > todayMentorRouletteCountResetCycleStart)
+        {
+            Plugin.RefreshMentorRouletteAchievementProgressForResetCycle(resetCycleStart, true);
+        }
+
         var mentorRouletteNames = CfRoulettes
             .Where(IsMentorRoulette)
             .Select(roulette => roulette.Name.ToString())
             .Where(name => !name.IsNullOrWhitespace())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        return Roulettes.Count(roulette =>
+        todayMentorRouletteCountResetCycleStart = resetCycleStart;
+        todayMentorRouletteCount = Roulettes.Count(roulette =>
             roulette.IsCompleted &&
-            IsToday(roulette) &&
+            IsInRouletteResetCycle(roulette, resetCycleStart) &&
             IsMentorRouletteName(roulette.RouletteType, mentorRouletteNames));
+        return todayMentorRouletteCount.Value;
     }
 
-    private static bool IsToday(Roulette roulette)
+    private static void InvalidateTodayMentorRouletteCount()
+    {
+        todayMentorRouletteCount = null;
+    }
+
+    private static bool IsInRouletteResetCycle(Roulette roulette, DateTime resetCycleStart)
     {
         var startedAt = roulette.GetStartedDateTime();
         if (startedAt != null)
         {
-            return startedAt.Value.Date == DateTime.Today;
+            return startedAt.Value >= resetCycleStart;
         }
 
         return DateTime.TryParseExact(
@@ -226,7 +253,7 @@ public class Database
             "yyyy-MM-dd",
             CultureInfo.InvariantCulture,
             DateTimeStyles.AssumeLocal,
-            out var date) && date.Date == DateTime.Today;
+            out var date) && date >= resetCycleStart;
     }
 
     public static bool IsMentorRoulette(ContentRoulette roulette)
@@ -1919,7 +1946,7 @@ public class Database
         return recordTime != null && recordTime >= resetAt;
     }
 
-    private static DateTime GetCurrentRouletteResetCycleStart()
+    internal static DateTime GetCurrentRouletteResetCycleStart()
     {
         var resetAtToday = DateTime.Today.AddHours(23);
         return DateTime.Now >= resetAtToday

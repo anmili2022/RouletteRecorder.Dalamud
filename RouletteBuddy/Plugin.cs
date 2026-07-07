@@ -42,6 +42,7 @@ public sealed class Plugin : IDalamudPlugin
     private MainWindow MainWindow { get; init; }
     private NoteWindow NoteWindow { get; init; }
     private static DateTime lastMentorRouletteAchievementRequest = DateTime.MinValue;
+    private static DateTime lastMentorRouletteAchievementResetCycleStart = DateTime.MinValue;
     private static uint? mentorRouletteAchievementCurrent;
     private static uint? mentorRouletteAchievementMax;
     private static string mentorRouletteAchievementStatus = "Achievement progress not requested";
@@ -467,7 +468,7 @@ public sealed class Plugin : IDalamudPlugin
 
     public static unsafe string GetMentorRouletteAchievementProgressText()
     {
-        UpdateMentorRouletteAchievementProgress();
+        UpdateMentorRouletteAchievementProgress(ShouldRefreshMentorRouletteAchievementForResetCycle());
 
         if (mentorRouletteAchievementCurrent != null)
         {
@@ -479,7 +480,37 @@ public sealed class Plugin : IDalamudPlugin
 
     public static unsafe void RefreshMentorRouletteAchievementProgress()
     {
+        lastMentorRouletteAchievementResetCycleStart = Database.GetCurrentRouletteResetCycleStart();
         UpdateMentorRouletteAchievementProgress(true);
+    }
+
+    public static unsafe void RefreshMentorRouletteAchievementProgressForResetCycle(DateTime resetCycleStart, bool force = false)
+    {
+        if (!force && resetCycleStart <= lastMentorRouletteAchievementResetCycleStart)
+        {
+            return;
+        }
+
+        lastMentorRouletteAchievementResetCycleStart = resetCycleStart;
+        mentorRouletteAchievementCurrent = null;
+        mentorRouletteAchievementMax = null;
+        lastMentorRouletteAchievementRequest = DateTime.MinValue;
+        UpdateMentorRouletteAchievementProgress(true);
+    }
+
+    private static bool ShouldRefreshMentorRouletteAchievementForResetCycle()
+    {
+        var resetCycleStart = Database.GetCurrentRouletteResetCycleStart();
+        if (resetCycleStart <= lastMentorRouletteAchievementResetCycleStart)
+        {
+            return false;
+        }
+
+        lastMentorRouletteAchievementResetCycleStart = resetCycleStart;
+        mentorRouletteAchievementCurrent = null;
+        mentorRouletteAchievementMax = null;
+        lastMentorRouletteAchievementRequest = DateTime.MinValue;
+        return true;
     }
 
     private static unsafe void UpdateMentorRouletteAchievementProgress(bool force = false)

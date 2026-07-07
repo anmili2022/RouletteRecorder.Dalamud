@@ -1,12 +1,12 @@
-﻿# 日随伴侣交接文档
+# 日随伴侣交接文档
 
 > 最后更新：2026-06-05
 > 项目路径：`E:\git\RouletteBuddy`
 > 当前分支：`master`
 > 插件名称：`日随伴侣`
 > 内部名：`RouletteBuddy`
-> 当前版本：`1.0.7.2`
-> 当前发布页：\`https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.7.2\`
+> 当前版本：`1.0.7.3`
+> 当前发布页：\`https://github.com/anmili2022/RouletteRecorder.Dalamud/releases/tag/v1.0.7.3\`
 
 ## 1. 接手先看
 
@@ -176,10 +176,10 @@ RouletteBuddy/RouletteBuddy.csproj
 当前版本字段：
 
 ```xml
-<Version>1.0.7.2</Version>
-<AssemblyVersion>1.0.7.2</AssemblyVersion>
-<FileVersion>1.0.7.2</FileVersion>
-<InformationalVersion>1.0.7.2</InformationalVersion>
+<Version>1.0.7.3</Version>
+<AssemblyVersion>1.0.7.3</AssemblyVersion>
+<FileVersion>1.0.7.3</FileVersion>
+<InformationalVersion>1.0.7.3</InformationalVersion>
 ```
 
 仓库清单：
@@ -194,7 +194,7 @@ repo.json
 {
   "Name": "日随伴侣",
   "InternalName": "RouletteBuddy",
-  "AssemblyVersion": "1.0.7.2",
+  "AssemblyVersion": "1.0.7.3",
   "DalamudApiLevel": 15
 }
 ```
@@ -1581,7 +1581,24 @@ repo.json
 - 神典石缓存仍只能刷新当前登录角色，离线角色显示最后缓存值。
 - 神典石数量通过 `TomestonesItem` 映射到 item id，再由 `InventoryManager.GetInventoryItemCount()` 读取。
 
-## 24. 下次建议
+## 24. 2026-06-23 发布记录（导随刷新优化）
+
+本轮作为 `v1.0.7.3` 发布。
+
+### 24.1 主要变更
+
+- 今日导随任务次数改为按当前 23:00 刷新周期统计。
+- 今日导随任务次数增加缓存，避免悬浮窗每帧扫描历史记录。
+- 新导随记录插入后会让今日导随次数缓存失效，并同步刷新导随任务总次数。
+- 23:00 刷新周期切换时会重算今日导随次数，并同步刷新导随任务总次数。
+- 移除悬浮窗中的手动刷新成就进度按钮。
+
+### 24.2 注意事项
+
+- 今日导随任务次数复用 `GetCurrentRouletteResetCycleStart()`，不再按自然日 00:00 切日。
+- 导随任务总次数仍来自成就进度接口，刷新后可能短暂显示读取中。
+
+## 25. 下次建议
 
 - 如用户需要，增加 `/prr on` 和 `/prr off`。
 - 后续可把 `MinimalShow...` 迁移为通用 `Show...`，并做配置迁移。
@@ -1592,5 +1609,6 @@ repo.json
 - 进游戏实测个人便签真实磨砂背景：
   - 若不生效，优先看 Dalamud 日志中 `CleanBackgroundManager` 的 D3D11 设备、shader、SRV/UAV 初始化情况。
   - 若用户希望标题栏也完全参与自定义磨砂，可考虑像 ARH 一样改成 `NoTitleBar` 并手绘标题栏、关闭按钮和折叠按钮；当前实现保留原生标题栏以满足“有标题栏 / 有折叠按钮”的需求。
+
 
 

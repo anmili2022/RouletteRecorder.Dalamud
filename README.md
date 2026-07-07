@@ -53,7 +53,7 @@
 9. 之后正常排本即可，插件会自动记录符合条件的随机任务。
 
 > 当前角色导随任务次数会从成就进度中读取，使用的是指导者随机任务 2000 次成就进度。首次打开或手动刷新时可能需要等待游戏返回成就数据。
-> 今日导随任务次数会从本插件历史记录中统计，统计范围为今天已记录且已完成的指导者随机任务。
+> 今日导随任务次数会从本插件历史记录中统计，统计范围为当前 23:00 刷新周期内已记录且已完成的指导者随机任务。
 
 ### 开发
 
@@ -195,7 +195,7 @@ Daily Roulette Companion is the Dalamud plugin version of [RouletteRecorder](htt
 9. Queue normally; the plugin will automatically record matching roulettes.
 
 > The current character's mentor roulette count is read from achievement progress, using the 2,000 mentor roulettes achievement. When opening the window for the first time or refreshing manually, it may take a moment for the game to return achievement data.
-> Today's mentor roulette count is calculated from this plugin's history records, counting completed mentor roulettes recorded today.
+> Today's mentor roulette count is calculated from this plugin's history records, counting completed mentor roulettes recorded in the current 23:00 reset cycle.
 
 ### Development
 
